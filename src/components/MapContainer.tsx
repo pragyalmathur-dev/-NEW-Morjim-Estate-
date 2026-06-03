@@ -1,25 +1,29 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
-import { Compass, Sparkles, Upload } from 'lucide-react';
+import { Compass, Sparkles, Upload, RotateCw } from 'lucide-react';
 import { OverlayConfig, MapTileStyle, OverlayMode } from '../types';
 import { getGeneratedSitePlanSVG } from '../utils/sitePlans';
 
 interface MapContainerProps {
   activeOverlayTab: 'a' | 'b';
   overlayConfigs: { a: OverlayConfig; b: OverlayConfig };
+  setOverlayConfigs: React.Dispatch<React.SetStateAction<{ a: OverlayConfig; b: OverlayConfig }>>;
   mapStyle: MapTileStyle;
   overlayMode: OverlayMode;
   setMapZoomState: (zoom: number) => void;
   mapRef: React.MutableRefObject<L.Map | null>;
+  showDevTools: boolean;
 }
 
 export default function MapContainer({
   activeOverlayTab,
   overlayConfigs,
+  setOverlayConfigs,
   mapStyle,
   overlayMode,
   setMapZoomState,
   mapRef,
+  showDevTools,
 }: MapContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mapInitialized, setMapInitialized] = useState(false);
@@ -41,6 +45,229 @@ export default function MapContainer({
     a: { left: 150, top: 120, width: 300, height: 300, rotate: 0, opacity: 0.85 },
     b: { left: 500, top: 120, width: 300, height: 300, rotate: 0, opacity: 0.85 },
   });
+
+  const [activeTransform, setActiveTransform] = useState<{
+    id: 'a' | 'b';
+    type: 'move' | 'resize-nw' | 'resize-ne' | 'resize-se' | 'resize-sw' | 'rotate';
+    clientX: number;
+    clientY: number;
+    startLeft: number;
+    startTop: number;
+    startWidth: number;
+    startHeight: number;
+    startRotate: number;
+    startLat: number;
+    startLng: number;
+    startWidthDeg: number;
+    startHeightDeg: number;
+    startCenterX: number;
+    startCenterY: number;
+  } | null>(null);
+
+  // Set up mouseup/mousemove listeners for dragging, scaling or rotating
+  useEffect(() => {
+    if (!activeTransform) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const map = mapRef.current;
+      if (!map) return;
+
+      const {
+        id,
+        type,
+        clientX,
+        clientY,
+        startLeft,
+        startTop,
+        startWidth,
+        startHeight,
+        startRotate,
+        startLat,
+        startLng,
+        startWidthDeg,
+        startHeightDeg,
+        startCenterX,
+        startCenterY,
+      } = activeTransform;
+
+      const dx = e.clientX - clientX;
+      const dy = e.clientY - clientY;
+
+      if (type === 'move') {
+        if (overlayMode === 'geo') {
+          try {
+            const startCenterPt = map.latLngToContainerPoint([startLat, startLng]);
+            const newCenterPt = L.point(startCenterPt.x + dx, startCenterPt.y + dy);
+            const newLatLng = map.containerPointToLatLng(newCenterPt);
+            
+            setOverlayConfigs(prev => ({
+              ...prev,
+              [id]: {
+                ...prev[id],
+                lat: newLatLng.lat,
+                lng: newLatLng.lng,
+              }
+            }));
+          } catch (err) {
+            // Ignore temporary projection errors during rapid pans
+          }
+        } else {
+          setOverlayConfigs(prev => ({
+            ...prev,
+            [id]: {
+              ...prev[id],
+              x: Math.round(startLeft + dx),
+              y: Math.round(startTop + dy),
+            }
+          }));
+        }
+      } else if (type.startsWith('resize')) {
+        let newWidth = startWidth;
+        let newHeight = startHeight;
+
+        if (type === 'resize-se') {
+          newWidth = Math.max(20, startWidth + dx);
+          newHeight = Math.max(20, startHeight + dy);
+        } else if (type === 'resize-sw') {
+          newWidth = Math.max(20, startWidth - dx);
+          newHeight = Math.max(20, startHeight + dy);
+        } else if (type === 'resize-ne') {
+          newWidth = Math.max(20, startWidth + dx);
+          newHeight = Math.max(20, startHeight - dy);
+        } else if (type === 'resize-nw') {
+          newWidth = Math.max(20, startWidth - dx);
+          newHeight = Math.max(20, startHeight - dy);
+        }
+
+        if (overlayMode === 'geo') {
+          const ratioW = newWidth / startWidth;
+          const ratioH = newHeight / startHeight;
+          setOverlayConfigs(prev => ({
+            ...prev,
+            [id]: {
+              ...prev[id],
+              widthDeg: Math.max(0.00001, startWidthDeg * ratioW),
+              heightDeg: Math.max(0.00001, startHeightDeg * ratioH),
+            }
+          }));
+        } else {
+          setOverlayConfigs(prev => ({
+            ...prev,
+            [id]: {
+              ...prev[id],
+              w: Math.round(newWidth),
+              h: Math.round(newHeight),
+            }
+          }));
+        }
+      } else if (type === 'rotate') {
+        const startAngle = Math.atan2(clientY - startCenterY, clientX - startCenterX);
+        const currentAngle = Math.atan2(e.clientY - startCenterY, e.clientX - startCenterX);
+        const diffR = ((currentAngle - startAngle) * 180) / Math.PI;
+
+        let newR = startRotate + diffR;
+        if (newR > 180) newR -= 360;
+        if (newR < -180) newR += 360;
+
+        setOverlayConfigs(prev => ({
+          ...prev,
+          [id]: {
+            ...prev[id],
+            r: parseFloat(newR.toFixed(1)),
+          }
+        }));
+      }
+    };
+
+    const handleMouseUp = () => {
+      setActiveTransform(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [activeTransform, overlayMode, setOverlayConfigs]);
+
+  const startDragMove = (id: 'a' | 'b', e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const config = overlayConfigs[id];
+    const pixels = pixelPositions[id];
+    setActiveTransform({
+      id,
+      type: 'move',
+      clientX: e.clientX,
+      clientY: e.clientY,
+      startLeft: config.x,
+      startTop: config.y,
+      startWidth: pixels.width,
+      startHeight: pixels.height,
+      startRotate: config.r,
+      startLat: config.lat,
+      startLng: config.lng,
+      startWidthDeg: config.widthDeg,
+      startHeightDeg: config.heightDeg,
+      startCenterX: 0,
+      startCenterY: 0,
+    });
+  };
+
+  const startDragResize = (id: 'a' | 'b', corner: 'nw' | 'ne' | 'se' | 'sw', e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const config = overlayConfigs[id];
+    const pixels = pixelPositions[id];
+    setActiveTransform({
+      id,
+      type: `resize-${corner}` as any,
+      clientX: e.clientX,
+      clientY: e.clientY,
+      startLeft: pixels.left,
+      startTop: pixels.top,
+      startWidth: pixels.width,
+      startHeight: pixels.height,
+      startRotate: config.r,
+      startLat: config.lat,
+      startLng: config.lng,
+      startWidthDeg: config.widthDeg,
+      startHeightDeg: config.heightDeg,
+      startCenterX: 0,
+      startCenterY: 0,
+    });
+  };
+
+  const startDragRotate = (id: 'a' | 'b', e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const config = overlayConfigs[id];
+    const pixels = pixelPositions[id];
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const startCenterX = rect.left + pixels.left + pixels.width / 2;
+    const startCenterY = rect.top + pixels.top + pixels.height / 2;
+
+    setActiveTransform({
+      id,
+      type: 'rotate',
+      clientX: e.clientX,
+      clientY: e.clientY,
+      startLeft: pixels.left,
+      startTop: pixels.top,
+      startWidth: pixels.width,
+      startHeight: pixels.height,
+      startRotate: config.r,
+      startLat: config.lat,
+      startLng: config.lng,
+      startWidthDeg: config.widthDeg,
+      startHeightDeg: config.heightDeg,
+      startCenterX,
+      startCenterY,
+    });
+  };
 
   // Reset imageStates when custom local images or visible configurations change
   useEffect(() => {
@@ -377,6 +604,7 @@ export default function MapContainer({
       <div id="map" ref={containerRef} className="w-full h-full z-0" />
 
       {/* Map Utilities Overlays (Site Plans) */}
+      {/* Map Utilities Overlays (Site Plans) */}
       {['a', 'b'].map((idKey) => {
         const id = idKey as 'a' | 'b';
         const config = overlayConfigs[id];
@@ -390,6 +618,8 @@ export default function MapContainer({
           ? '/assets/siteplan/site-plan_ME1.png'
           : '/assets/siteplan/site-plan_ME2.png';
         const isA = id === 'a';
+        const isTransforming = activeTransform?.id === id;
+        const isSelected = showDevTools && activeOverlayTab === id;
 
         return (
           <div
@@ -402,66 +632,87 @@ export default function MapContainer({
               height: `${pixels.height}px`,
               transform: `rotate(${pixels.rotate}deg)`,
               opacity: pixels.opacity / 100,
-              pointerEvents: 'none',
+              pointerEvents: isSelected ? 'auto' : 'none',
               transformOrigin: 'center center',
-              zIndex: 10,
+              zIndex: isSelected ? 100 : 10,
             }}
-            className="transition-all duration-75 shadow-sm"
+            className={`transition-all duration-75 shadow-lg select-none ${
+              isSelected 
+                ? 'border-2 border-[#00e09e] ring-4 ring-emerald-500/10 rounded' 
+                : 'border border-transparent'
+            }`}
           >
             {/* Image render or Upload notice helper */}
-            <div className="w-full h-full relative" style={{ pointerEvents: 'none' }}>
-              {imageStates[id] !== 'failed' && (
-                <img
-                  src={config.localImageSrc || serverSrc}
-                  alt={`Site Plan ${isA ? 'ME1' : 'ME2'}`}
-                  className="w-full h-full object-fill pointer-events-none rounded border border-transparent"
-                  style={{ contentVisibility: 'auto' }}
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    const fallback = getGeneratedSitePlanSVG(id);
-                    
-                    // If we haven't tried the SVG fallback yet, swap to it
-                    if (!config.localImageSrc && !target.src.startsWith('data:')) {
-                      target.src = fallback;
-                      return;
-                    }
+            <div 
+              className="w-full h-full relative cursor-move" 
+              style={{ pointerEvents: isSelected ? 'auto' : 'none' }}
+              onMouseDown={(e) => {
+                if (isSelected) {
+                  startDragMove(id, e);
+                }
+              }}
+            >
+              <img
+                src={config.localImageSrc || serverSrc}
+                alt={`Site Plan ${isA ? 'ME1' : 'ME2'}`}
+                className="w-full h-full object-fill pointer-events-none rounded"
+                style={{ contentVisibility: 'auto' }}
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  const fallback = getGeneratedSitePlanSVG(id);
+                  if (target.src !== fallback) {
+                    target.src = fallback;
+                  }
+                }}
+              />
 
-                    // Otherwise, mark as failed to show upload placeholder
-                    setImageStates(prev => ({ ...prev, [id]: 'failed' }));
-                  }}
-                  onLoad={() => {
-                    setImageStates(prev => ({ ...prev, [id]: 'loaded' }));
-                  }}
-                />
-              )}
-              
-              {/* Fallback Beautiful Dashboard placeholder block */}
-              {imageStates[id] === 'failed' && (
-                <div
-                  className="plan-placeholder w-full h-full absolute inset-0 flex flex-col items-center justify-center p-6 text-center rounded border-2 border-dashed select-none pointer-events-none"
-                  style={{
-                    backgroundColor: isA ? 'rgba(0,142,98,0.18)' : 'rgba(200,134,10,0.18)',
-                    borderColor: isA ? 'rgba(0,142,98,0.7)' : 'rgba(200,134,10,0.7)',
-                    color: isA ? '#006b4a' : '#a06a00',
-                  }}
-                >
-                  <Upload className="w-8 h-8 mb-2 animate-bounce opacity-80" />
-                  <div className="font-serif text-sm font-semibold mb-1">
-                    Morjim Estate - Plan {isA ? 'ME1' : 'ME2'}
+              {/* Dynamic Interactive Resize Controls Overlay */}
+              {isSelected && (
+                <>
+                  {/* Bounding info tag */}
+                  <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-neutral-950/95 backdrop-blur-sm px-2.5 py-1 rounded text-stone-200 text-[10px] font-sans shadow-md border border-neutral-800 pointer-events-none z-50 flex items-center gap-1.5 whitespace-nowrap">
+                    <span className={`w-1.5 h-1.5 rounded-full ${isTransforming ? 'bg-[red]' : 'bg-[#00e09e]'} animate-pulse`} />
+                    <span>Adjusting ME{isA ? '1' : '2'} via {overlayMode === 'geo' ? 'GIS (Geo-locked)' : 'Viewport (Screen)'}</span>
                   </div>
-                  <p className="text-[10px] leading-normal font-sans max-w-[200px] opacity-90 mb-1.5">
-                    {hasCustom 
-                      ? 'Previewing uploaded file' 
-                      : `Please place "site-plan_ME${isA ? '1' : '2'}.png" inside "/public/assets/siteplan/" or use the developer panel to select a local file instantly.`
-                    }
-                  </p>
-                  <div className="text-[9px] px-2 py-0.5 rounded bg-white/70 font-mono shadow-sm">
-                    {overlayMode === 'geo' 
-                      ? `Lat: ${config.lat.toFixed(5)}, Lng: ${config.lng.toFixed(5)}` 
-                      : `X: ${config.x}px, Y: ${config.y}px`
-                    }
-                  </div>
-                </div>
+
+                  {/* Connecting line to Rotate Handle */}
+                  <div className="absolute -top-[16px] left-1/2 -translate-x-1/2 w-[1.5px] h-[16px] bg-[#00e09e]/80" />
+
+                  {/* Rotate handle */}
+                  <button
+                    onMouseDown={(e) => startDragRotate(id, e)}
+                    className="absolute -top-[30px] left-1/2 -translate-x-1/2 w-7 h-7 bg-neutral-900 hover:bg-[#008e62] border border-[#00e09e] text-white rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing hover:scale-110 shadow-lg pointer-events-auto transition-all z-50"
+                    title="Drag to Rotate Site Plan"
+                  >
+                    <RotateCw className="w-3.5 h-3.5 text-[#00e09e] hover:text-white" />
+                  </button>
+
+                  {/* Corner Resize handles */}
+                  {/* NW */}
+                  <div
+                    onMouseDown={(e) => startDragResize(id, 'nw', e)}
+                    className="absolute -top-2 -left-2 w-4 h-4 bg-white border-2 border-[#00e09e] hover:bg-[#00e09e] rounded-full shadow-md cursor-nwse-resize pointer-events-auto z-50 transition-all hover:scale-125"
+                    title="Resize North West"
+                  />
+                  {/* NE */}
+                  <div
+                    onMouseDown={(e) => startDragResize(id, 'ne', e)}
+                    className="absolute -top-2 -right-2 w-4 h-4 bg-white border-2 border-[#00e09e] hover:bg-[#00e09e] rounded-full shadow-md cursor-nesw-resize pointer-events-auto z-50 transition-all hover:scale-125"
+                    title="Resize North East"
+                  />
+                  {/* SE */}
+                  <div
+                    onMouseDown={(e) => startDragResize(id, 'se', e)}
+                    className="absolute -bottom-2 -right-2 w-4 h-4 bg-white border-2 border-[#00e09e] hover:bg-[#00e09e] rounded-full shadow-md cursor-nwse-resize pointer-events-auto z-50 transition-all hover:scale-125"
+                    title="Resize South East"
+                  />
+                  {/* SW */}
+                  <div
+                    onMouseDown={(e) => startDragResize(id, 'sw', e)}
+                    className="absolute -bottom-2 -left-2 w-4 h-4 bg-white border-2 border-[#00e09e] hover:bg-[#00e09e] rounded-full shadow-md cursor-nesw-resize pointer-events-auto z-50 transition-all hover:scale-125"
+                    title="Resize South West"
+                  />
+                </>
               )}
             </div>
           </div>

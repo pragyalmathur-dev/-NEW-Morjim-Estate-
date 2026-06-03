@@ -188,10 +188,12 @@ export default function App() {
         <MapContainer
           activeOverlayTab={activeOverlayTab}
           overlayConfigs={overlayConfigs}
+          setOverlayConfigs={setOverlayConfigs}
           mapStyle={mapStyle}
           overlayMode={overlayMode}
           setMapZoomState={setMapZoomState}
           mapRef={mapRef}
+          showDevTools={showDevTools}
         />
 
         {/* Developer Alignment Tool Controls (Toggle Bar) */}

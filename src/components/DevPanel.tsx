@@ -326,35 +326,34 @@ export default function DevPanel({
             </div>
           </div>
 
-          {/* Local Disk Upload Picker */}
-          <div className="space-y-1.5 pt-3">
-            <span className="text-[9px] font-bold tracking-widest text-[#8a8a8a] uppercase block">Instant Local Asset Loader</span>
-            <label className="flex flex-col items-center justify-center p-2 rounded-md border border-dashed border-neutral-800 bg-[#161616] hover:bg-[#1a1a1a]/80 hover:border-emerald-500/50 cursor-pointer text-center group transition-all duration-200">
-              <FolderSync className="w-4 h-4 text-stone-500 group-hover:text-[#00e09e] mb-1 group-hover:animate-bounce" />
-              <div className="text-[10px] text-stone-400 font-semibold group-hover:text-white">
-                Choose site-plan_ME{activeOverlayTab === 'a' ? '1' : '2'}.png
-              </div>
-              <div className="text-[8px] text-stone-500 mt-0.5">
-                Load local plan draft into memory
-              </div>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleLocalImageUpload}
-                className="hidden"
-              />
-            </label>
-            {activeCfg.localImageSrc && (
-              <div className="text-[9px] text-emerald-500 flex items-center justify-between bg-emerald-900/10 px-2 py-1 rounded">
-                <span>✓ Local File Active in Memory</span>
-                <button 
-                  onClick={() => updateActiveOverlayValue('localImageSrc', 0 as any)} // deletes local file
-                  className="text-stone-400 hover:text-red-400 font-bold"
-                >
-                  Clear
-                </button>
-              </div>
-            )}
+          {/* Coordinate Alignment Helpers */}
+          <div className="space-y-2 pt-3">
+            <span className="text-[9px] font-bold tracking-widest text-[#8a8a8a] uppercase block">Global View Realignment</span>
+            <button
+              onClick={() => {
+                const map = mapRef.current;
+                if (!map) return;
+                const center = map.getCenter();
+                setOverlayConfigs(prev => ({
+                  ...prev,
+                  [activeOverlayTab]: {
+                    ...prev[activeOverlayTab],
+                    lat: center.lat,
+                    lng: center.lng,
+                    // If center is pushed in screen mode, center roughly on the viewport
+                    x: 180,
+                    y: 110,
+                  }
+                }));
+              }}
+              className="w-full py-2 bg-emerald-500/15 border border-[#00e09e]/30 hover:bg-[#00e09e] text-[#00e09e] hover:text-neutral-950 font-serif text-[11px] font-bold tracking-wider uppercase rounded transition-all flex items-center justify-center gap-2 cursor-pointer shadow"
+            >
+              <RefreshCw className="w-3.5 h-3.5 animate-spin-slow" />
+              Bring ME{activeOverlayTab === 'a' ? '1' : '2'} to Map Center
+            </button>
+            <p className="text-[8.5px] text-stone-500 leading-normal">
+              Using the pre-uploaded masterplans from <code className="text-stone-400 font-mono">/assets/siteplan/</code>. Scroll anywhere and click to teleport here.
+            </p>
           </div>
 
           {/* Centimetre high precision nudge dials (NUDGE MACHINE) */}
@@ -412,17 +411,24 @@ export default function DevPanel({
                 <div className="space-y-1">
                   <div className="flex justify-between text-[11px]">
                     <span className="text-stone-400">Center Latitude</span>
-                    <span className="font-mono text-emerald-400">{activeCfg.lat.toFixed(6)}</span>
+                    <span className="font-mono text-[#00e09e]">{activeCfg.lat.toFixed(7)}</span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-center">
                     <input
                       type="range"
-                      min="15.635"
-                      max="15.647"
-                      step="0.000002"
+                      min={activeCfg.lat - 0.05}
+                      max={activeCfg.lat + 0.05}
+                      step="0.000001"
                       value={activeCfg.lat}
                       onChange={(e) => updateActiveOverlayValue('lat', parseFloat(e.target.value))}
-                      className="flex-1 accent-[#00e09e] h-1.5 bg-neutral-800"
+                      className="flex-1 accent-[#00e09e] h-1.5 bg-neutral-850"
+                    />
+                    <input
+                      type="number"
+                      step="0.000001"
+                      value={activeCfg.lat}
+                      onChange={(e) => updateActiveOverlayValue('lat', parseFloat(e.target.value) || 0)}
+                      className="w-24 text-center bg-neutral-800 border border-neutral-700 text-[10.5px] py-0.5 rounded focus:outline-none font-mono text-[#00e09e]"
                     />
                   </div>
                 </div>
@@ -430,53 +436,74 @@ export default function DevPanel({
                 <div className="space-y-1">
                   <div className="flex justify-between text-[11px]">
                     <span className="text-stone-400">Center Longitude</span>
-                    <span className="font-mono text-emerald-400">{activeCfg.lng.toFixed(6)}</span>
+                    <span className="font-mono text-[#00e09e]">{activeCfg.lng.toFixed(7)}</span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-center">
                     <input
                       type="range"
-                      min="73.738"
-                      max="73.749"
-                      step="0.000002"
+                      min={activeCfg.lng - 0.05}
+                      max={activeCfg.lng + 0.05}
+                      step="0.000001"
                       value={activeCfg.lng}
                       onChange={(e) => updateActiveOverlayValue('lng', parseFloat(e.target.value))}
-                      className="flex-1 accent-[#00e09e] h-1.5 bg-neutral-800"
+                      className="flex-1 accent-[#00e09e] h-1.5 bg-neutral-850"
+                    />
+                    <input
+                      type="number"
+                      step="0.000001"
+                      value={activeCfg.lng}
+                      onChange={(e) => updateActiveOverlayValue('lng', parseFloat(e.target.value) || 0)}
+                      className="w-24 text-center bg-neutral-800 border border-neutral-700 text-[10.5px] py-0.5 rounded focus:outline-none font-mono text-[#00e09e]"
                     />
                   </div>
                 </div>
                 {/* Width degree */}
                 <div className="space-y-1">
                   <div className="flex justify-between text-[11px]">
-                    <span className="text-stone-400">Width (Degrees spread)</span>
-                    <span className="font-mono text-emerald-400">{activeCfg.widthDeg.toFixed(6)}</span>
+                    <span className="text-stone-400">Width Degrees (Span)</span>
+                    <span className="font-mono text-[#00e09e]">{activeCfg.widthDeg.toFixed(7)}</span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-center">
                     <input
                       type="range"
-                      min="0.0005"
-                      max="0.007"
-                      step="0.000002"
+                      min="0.0001"
+                      max="0.05"
+                      step="0.000001"
                       value={activeCfg.widthDeg}
                       onChange={(e) => updateActiveOverlayValue('widthDeg', parseFloat(e.target.value))}
-                      className="flex-1 accent-[#00e09e] h-1.5 bg-neutral-800"
+                      className="flex-1 accent-[#00e09e] h-1.5 bg-neutral-850"
+                    />
+                    <input
+                      type="number"
+                      step="0.000001"
+                      value={activeCfg.widthDeg}
+                      onChange={(e) => updateActiveOverlayValue('widthDeg', parseFloat(e.target.value) || 0.001)}
+                      className="w-24 text-center bg-neutral-800 border border-neutral-700 text-[10.5px] py-0.5 rounded focus:outline-none font-mono text-[#00e09e]"
                     />
                   </div>
                 </div>
                 {/* Height degree */}
                 <div className="space-y-1">
                   <div className="flex justify-between text-[11px]">
-                    <span className="text-stone-400">Height (Degrees spread)</span>
-                    <span className="font-mono text-emerald-400">{activeCfg.heightDeg.toFixed(6)}</span>
+                    <span className="text-stone-400">Height Degrees (Span)</span>
+                    <span className="font-mono text-[#00e09e]">{activeCfg.heightDeg.toFixed(7)}</span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-center">
                     <input
                       type="range"
-                      min="0.0005"
-                      max="0.007"
-                      step="0.000002"
+                      min="0.0001"
+                      max="0.05"
+                      step="0.000001"
                       value={activeCfg.heightDeg}
                       onChange={(e) => updateActiveOverlayValue('heightDeg', parseFloat(e.target.value))}
-                      className="flex-1 accent-[#00e09e] h-1.5 bg-neutral-800"
+                      className="flex-1 accent-[#00e09e] h-1.5 bg-neutral-850"
+                    />
+                    <input
+                      type="number"
+                      step="0.000001"
+                      value={activeCfg.heightDeg}
+                      onChange={(e) => updateActiveOverlayValue('heightDeg', parseFloat(e.target.value) || 0.001)}
+                      className="w-24 text-center bg-neutral-800 border border-neutral-700 text-[10.5px] py-0.5 rounded focus:outline-none font-mono text-[#00e09e]"
                     />
                   </div>
                 </div>
