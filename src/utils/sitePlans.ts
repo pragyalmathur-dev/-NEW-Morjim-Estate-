@@ -113,7 +113,12 @@ export function getGeneratedSitePlanSVG(id: 'a' | 'b'): string {
         </g>
       </svg>
     `;
-    return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg.trim());
+    try {
+      const base64 = btoa(unescape(encodeURIComponent(svg.trim())));
+      return 'data:image/svg+xml;base64,' + base64;
+    } catch (e) {
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.trim());
+    }
   } else {
     // Phase 2 - 8 Private Sanctuaries, 5 BHK Forest Views
     const plots = Array.from({ length: 8 }, (_, i) => {
@@ -221,6 +226,11 @@ export function getGeneratedSitePlanSVG(id: 'a' | 'b'): string {
         </g>
       </svg>
     `;
-    return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg.trim());
+    try {
+      const base64 = btoa(unescape(encodeURIComponent(svg.trim())));
+      return 'data:image/svg+xml;base64,' + base64;
+    } catch (e) {
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.trim());
+    }
   }
 }

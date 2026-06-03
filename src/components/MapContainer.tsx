@@ -24,6 +24,15 @@ export default function MapContainer({
   const containerRef = useRef<HTMLDivElement>(null);
   const [mapInitialized, setMapInitialized] = useState(false);
   
+  // Track image load/error state to handle fallbacks and placeholders cleanly in React without DOM conflicts
+  const [imageStates, setImageStates] = useState<{
+    a: 'loading' | 'loaded' | 'failed';
+    b: 'loading' | 'loaded' | 'failed';
+  }>({
+    a: 'loading',
+    b: 'loading',
+  });
+
   // Track pixel calculations for visual rendering
   const [pixelPositions, setPixelPositions] = useState<{
     a: { left: number; top: number; width: number; height: number; rotate: number; opacity: number };
@@ -32,6 +41,15 @@ export default function MapContainer({
     a: { left: 150, top: 120, width: 300, height: 300, rotate: 0, opacity: 0.85 },
     b: { left: 500, top: 120, width: 300, height: 300, rotate: 0, opacity: 0.85 },
   });
+
+  // Reset imageStates when custom local images or visible configurations change
+  useEffect(() => {
+    setImageStates(prev => ({ ...prev, a: 'loading' }));
+  }, [overlayConfigs.a.localImageSrc, overlayConfigs.a.visible]);
+
+  useEffect(() => {
+    setImageStates(prev => ({ ...prev, b: 'loading' }));
+  }, [overlayConfigs.b.localImageSrc, overlayConfigs.b.visible]);
 
   const tileLayersRef = useRef<{ [key in MapTileStyle]?: L.TileLayer }>({});
 
@@ -368,7 +386,9 @@ export default function MapContainer({
 
         // Determine if local uploaded file or actual server image
         const hasCustom = !!config.localImageSrc;
-        const serverSrc = getGeneratedSitePlanSVG(id);
+        const serverSrc = id === 'a'
+          ? '/assets/siteplan/site-plan_ME1.png'
+          : '/assets/siteplan/site-plan_ME2.png';
         const isA = id === 'a';
 
         return (
@@ -390,60 +410,59 @@ export default function MapContainer({
           >
             {/* Image render or Upload notice helper */}
             <div className="w-full h-full relative" style={{ pointerEvents: 'none' }}>
-              <img
-                src={config.localImageSrc || serverSrc}
-                alt={`Site Plan ${isA ? 'ME1' : 'ME2'}`}
-                className="w-full h-full object-fill pointer-events-none rounded border border-transparent"
-                style={{ contentVisibility: 'auto' }}
-                onError={(e) => {
-                  // Fallback if file doesn't exist
-                  if (!config.localImageSrc) {
-                    // Try to hide the broken image element
-                    (e.target as HTMLImageElement).style.display = 'none';
-                    const parent = (e.target as HTMLElement).parentElement;
-                    const placeholder = parent?.querySelector('.plan-placeholder');
-                    if (placeholder) {
-                      (placeholder as HTMLElement).style.display = 'flex';
+              {imageStates[id] !== 'failed' && (
+                <img
+                  src={config.localImageSrc || serverSrc}
+                  alt={`Site Plan ${isA ? 'ME1' : 'ME2'}`}
+                  className="w-full h-full object-fill pointer-events-none rounded border border-transparent"
+                  style={{ contentVisibility: 'auto' }}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    const fallback = getGeneratedSitePlanSVG(id);
+                    
+                    // If we haven't tried the SVG fallback yet, swap to it
+                    if (!config.localImageSrc && !target.src.startsWith('data:')) {
+                      target.src = fallback;
+                      return;
                     }
-                  }
-                }}
-                onLoad={(e) => {
-                  // Ensure visible
-                  (e.target as HTMLImageElement).style.display = 'block';
-                  const parent = (e.target as HTMLElement).parentElement;
-                  const placeholder = parent?.querySelector('.plan-placeholder');
-                  if (placeholder) {
-                    (placeholder as HTMLElement).style.display = 'none';
-                  }
-                }}
-              />
+
+                    // Otherwise, mark as failed to show upload placeholder
+                    setImageStates(prev => ({ ...prev, [id]: 'failed' }));
+                  }}
+                  onLoad={() => {
+                    setImageStates(prev => ({ ...prev, [id]: 'loaded' }));
+                  }}
+                />
+              )}
+              
               {/* Fallback Beautiful Dashboard placeholder block */}
-              <div
-                className="plan-placeholder w-full h-full absolute inset-0 flex flex-col items-center justify-center p-6 text-center rounded border-2 border-dashed select-none pointer-events-none"
-                style={{
-                  backgroundColor: isA ? 'rgba(0,142,98,0.18)' : 'rgba(200,134,10,0.18)',
-                  borderColor: isA ? 'rgba(0,142,98,0.7)' : 'rgba(200,134,10,0.7)',
-                  color: isA ? '#006b4a' : '#a06a00',
-                  display: 'flex', // Fallback defaults to visible, img onLoad handles hiding
-                }}
-              >
-                <Upload className="w-8 h-8 mb-2 animate-bounce opacity-80" />
-                <div className="font-serif text-sm font-semibold mb-1">
-                  Morjim Estate - Plan {isA ? 'ME1' : 'ME2'}
+              {imageStates[id] === 'failed' && (
+                <div
+                  className="plan-placeholder w-full h-full absolute inset-0 flex flex-col items-center justify-center p-6 text-center rounded border-2 border-dashed select-none pointer-events-none"
+                  style={{
+                    backgroundColor: isA ? 'rgba(0,142,98,0.18)' : 'rgba(200,134,10,0.18)',
+                    borderColor: isA ? 'rgba(0,142,98,0.7)' : 'rgba(200,134,10,0.7)',
+                    color: isA ? '#006b4a' : '#a06a00',
+                  }}
+                >
+                  <Upload className="w-8 h-8 mb-2 animate-bounce opacity-80" />
+                  <div className="font-serif text-sm font-semibold mb-1">
+                    Morjim Estate - Plan {isA ? 'ME1' : 'ME2'}
+                  </div>
+                  <p className="text-[10px] leading-normal font-sans max-w-[200px] opacity-90 mb-1.5">
+                    {hasCustom 
+                      ? 'Previewing uploaded file' 
+                      : `Please place "site-plan_ME${isA ? '1' : '2'}.png" inside "/public/assets/siteplan/" or use the developer panel to select a local file instantly.`
+                    }
+                  </p>
+                  <div className="text-[9px] px-2 py-0.5 rounded bg-white/70 font-mono shadow-sm">
+                    {overlayMode === 'geo' 
+                      ? `Lat: ${config.lat.toFixed(5)}, Lng: ${config.lng.toFixed(5)}` 
+                      : `X: ${config.x}px, Y: ${config.y}px`
+                    }
+                  </div>
                 </div>
-                <p className="text-[10px] leading-normal font-sans max-w-[200px] opacity-90 mb-1.5">
-                  {hasCustom 
-                    ? 'Previewing uploaded file' 
-                    : `Please place "site-plan_ME${isA ? '1' : '2'}.png" inside "/public/assets/siteplan/" or use the developer panel to select a local file instantly.`
-                  }
-                </p>
-                <div className="text-[9px] px-2 py-0.5 rounded bg-white/70 font-mono shadow-sm">
-                  {overlayMode === 'geo' 
-                    ? `Lat: ${config.lat.toFixed(5)}, Lng: ${config.lng.toFixed(5)}` 
-                    : `X: ${config.x}px, Y: ${config.y}px`
-                  }
-                </div>
-              </div>
+              )}
             </div>
           </div>
         );
