@@ -1,0 +1,6 @@
+{
+  "name": "Vianaar — Morjim Estate",
+  "description": "Interactive site plan overlay and positioning developer tool for Morjim Estate (Phase 1 & Phase 2) in North Goa.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
