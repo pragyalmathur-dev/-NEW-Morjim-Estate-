@@ -122,32 +122,33 @@ export default function MapContainer({
           }));
         }
       } else if (type.startsWith('resize')) {
-        let newWidth = startWidth;
-        let newHeight = startHeight;
+        let ratioX = 1;
+        let ratioY = 1;
 
         if (type === 'resize-se') {
-          newWidth = Math.max(20, startWidth + dx);
-          newHeight = Math.max(20, startHeight + dy);
+          ratioX = (startWidth + dx) / startWidth;
+          ratioY = (startHeight + dy) / startHeight;
         } else if (type === 'resize-sw') {
-          newWidth = Math.max(20, startWidth - dx);
-          newHeight = Math.max(20, startHeight + dy);
+          ratioX = (startWidth - dx) / startWidth;
+          ratioY = (startHeight + dy) / startHeight;
         } else if (type === 'resize-ne') {
-          newWidth = Math.max(20, startWidth + dx);
-          newHeight = Math.max(20, startHeight - dy);
+          ratioX = (startWidth + dx) / startWidth;
+          ratioY = (startHeight - dy) / startHeight;
         } else if (type === 'resize-nw') {
-          newWidth = Math.max(20, startWidth - dx);
-          newHeight = Math.max(20, startHeight - dy);
+          ratioX = (startWidth - dx) / startWidth;
+          ratioY = (startHeight - dy) / startHeight;
         }
 
+        // Average horizontal and vertical ratios to create a perfect uniform scale factor
+        const scale = Math.max(0.01, (ratioX + ratioY) / 2);
+
         if (overlayMode === 'geo') {
-          const ratioW = newWidth / startWidth;
-          const ratioH = newHeight / startHeight;
           setOverlayConfigs(prev => ({
             ...prev,
             [id]: {
               ...prev[id],
-              widthDeg: Math.max(0.00001, startWidthDeg * ratioW),
-              heightDeg: Math.max(0.00001, startHeightDeg * ratioH),
+              widthDeg: Math.max(0.00001, startWidthDeg * scale),
+              heightDeg: Math.max(0.00001, startHeightDeg * scale),
             }
           }));
         } else {
@@ -155,8 +156,8 @@ export default function MapContainer({
             ...prev,
             [id]: {
               ...prev[id],
-              w: Math.round(newWidth),
-              h: Math.round(newHeight),
+              w: Math.max(20, Math.round(startWidth * scale)),
+              h: Math.max(20, Math.round(startHeight * scale)),
             }
           }));
         }

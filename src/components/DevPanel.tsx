@@ -67,6 +67,33 @@ export default function DevPanel({
     }));
   };
 
+  const updateSymmetricScale = (newVal: number) => {
+    setOverlayConfigs(prev => {
+      const current = prev[activeOverlayTab];
+      if (overlayMode === 'geo') {
+        const ratio = current.widthDeg / current.heightDeg;
+        return {
+          ...prev,
+          [activeOverlayTab]: {
+            ...current,
+            widthDeg: newVal,
+            heightDeg: newVal / ratio,
+          }
+        };
+      } else {
+        const ratio = current.w / current.h;
+        return {
+          ...prev,
+          [activeOverlayTab]: {
+            ...current,
+            w: newVal,
+            h: Math.round(newVal / ratio),
+          }
+        };
+      }
+    });
+  };
+
   // Centimetre-level Micro-Nudges!
   // Increments for GIS or pixel adjustment modes
   const nudge = (type: 'up' | 'down' | 'left' | 'right' | 'wPlus' | 'wMinus' | 'hPlus' | 'hMinus' | 'rCw' | 'rCcw') => {
@@ -76,33 +103,49 @@ export default function DevPanel({
       if (overlayMode === 'geo') {
         const dLat = 0.000002; // Roughly 0.22 meters in Morjim
         const dLng = 0.000002;
-        const dDeg = 0.000001; // Scale factor adjustment
+        const dDeg = 0.00001; // Scale factor adjustment
         
         switch (type) {
           case 'up': return { ...prev, [activeOverlayTab]: { ...current, lat: current.lat + dLat } };
           case 'down': return { ...prev, [activeOverlayTab]: { ...current, lat: current.lat - dLat } };
           case 'left': return { ...prev, [activeOverlayTab]: { ...current, lng: current.lng - dLng } };
           case 'right': return { ...prev, [activeOverlayTab]: { ...current, lng: current.lng + dLng } };
-          case 'wPlus': return { ...prev, [activeOverlayTab]: { ...current, widthDeg: current.widthDeg + dDeg } };
-          case 'wMinus': return { ...prev, [activeOverlayTab]: { ...current, widthDeg: Math.max(0.00001, current.widthDeg - dDeg) } };
-          case 'hPlus': return { ...prev, [activeOverlayTab]: { ...current, heightDeg: current.heightDeg + dDeg } };
-          case 'hMinus': return { ...prev, [activeOverlayTab]: { ...current, heightDeg: Math.max(0.00001, current.heightDeg - dDeg) } };
+          case 'wPlus':
+          case 'hPlus': {
+            const ratio = current.widthDeg / current.heightDeg;
+            const nextWidth = current.widthDeg + dDeg;
+            return { ...prev, [activeOverlayTab]: { ...current, widthDeg: nextWidth, heightDeg: nextWidth / ratio } };
+          }
+          case 'wMinus':
+          case 'hMinus': {
+            const ratio = current.widthDeg / current.heightDeg;
+            const nextWidth = Math.max(0.00005, current.widthDeg - dDeg);
+            return { ...prev, [activeOverlayTab]: { ...current, widthDeg: nextWidth, heightDeg: nextWidth / ratio } };
+          }
           case 'rCw': return { ...prev, [activeOverlayTab]: { ...current, r: current.r + 0.2 } };
           case 'rCcw': return { ...prev, [activeOverlayTab]: { ...current, r: current.r - 0.2 } };
         }
       } else {
         const dPix = 1;      // One pixel nudge
-        const dSz = 2;       // Size stretch units
+        const dSz = 4;       // Size stretch units
         
         switch (type) {
           case 'up': return { ...prev, [activeOverlayTab]: { ...current, y: current.y - dPix } };
           case 'down': return { ...prev, [activeOverlayTab]: { ...current, y: current.y + dPix } };
           case 'left': return { ...prev, [activeOverlayTab]: { ...current, x: current.x - dPix } };
           case 'right': return { ...prev, [activeOverlayTab]: { ...current, x: current.x + dPix } };
-          case 'wPlus': return { ...prev, [activeOverlayTab]: { ...current, w: current.w + dSz } };
-          case 'wMinus': return { ...prev, [activeOverlayTab]: { ...current, w: Math.max(10, current.w - dSz) } };
-          case 'hPlus': return { ...prev, [activeOverlayTab]: { ...current, h: current.h + dSz } };
-          case 'hMinus': return { ...prev, [activeOverlayTab]: { ...current, h: Math.max(10, current.h - dSz) } };
+          case 'wPlus':
+          case 'hPlus': {
+            const ratio = current.w / current.h;
+            const nextW = current.w + dSz;
+            return { ...prev, [activeOverlayTab]: { ...current, w: nextW, h: Math.round(nextW / ratio) } };
+          }
+          case 'wMinus':
+          case 'hMinus': {
+            const ratio = current.w / current.h;
+            const nextW = Math.max(20, current.w - dSz);
+            return { ...prev, [activeOverlayTab]: { ...current, w: nextW, h: Math.round(nextW / ratio) } };
+          }
           case 'rCw': return { ...prev, [activeOverlayTab]: { ...current, r: current.r + 0.5 } };
           case 'rCcw': return { ...prev, [activeOverlayTab]: { ...current, r: current.r - 0.5 } };
         }
@@ -375,26 +418,23 @@ export default function DevPanel({
               </div>
 
               {/* Stretch scale and Rotate pad */}
-              <div className="grid grid-cols-2 gap-2 w-full mt-1.5 pt-2 border-t border-neutral-900 text-[10px]">
+              <div className="flex flex-col gap-2 w-full mt-1.5 pt-2 border-t border-neutral-900 text-[10px]">
                 <div className="space-y-1 text-center">
-                  <div className="text-[8px] font-bold text-[#8a8a8a] uppercase">Fine Width</div>
-                  <div className="flex gap-1 justify-center">
-                    <button onClick={() => nudge('wMinus')} className="px-1.5 py-0.5 bg-neutral-800 hover:bg-neutral-700 rounded text-stone-200 outline-none">-</button>
-                    <button onClick={() => nudge('wPlus')} className="px-1.5 py-0.5 bg-neutral-800 hover:bg-neutral-700 rounded text-stone-200 outline-none">+</button>
+                  <div className="text-[8px] font-bold text-[#8a8a8a] uppercase flex justify-center items-center gap-1">Fine Symmetric Scale</div>
+                  <div className="flex gap-1.5 justify-center">
+                    <button onClick={() => nudge('wMinus')} className="px-3.5 py-1 bg-neutral-800 hover:bg-neutral-700 rounded text-stone-200 outline-none text-[10px] flex items-center gap-1">
+                      <span>Scale Down -</span>
+                    </button>
+                    <button onClick={() => nudge('wPlus')} className="px-3.5 py-1 bg-neutral-800 hover:bg-[#008e62] hover:text-white rounded text-stone-200 outline-none text-[10px] flex items-center gap-1 font-bold">
+                      <span>Scale Up +</span>
+                    </button>
                   </div>
                 </div>
-                <div className="space-y-1 text-center">
-                  <div className="text-[8px] font-bold text-[#8a8a8a] uppercase">Fine Height</div>
-                  <div className="flex gap-1 justify-center">
-                    <button onClick={() => nudge('hMinus')} className="px-1.5 py-0.5 bg-neutral-800 hover:bg-neutral-700 rounded text-stone-200 outline-none">-</button>
-                    <button onClick={() => nudge('hPlus')} className="px-1.5 py-0.5 bg-neutral-800 hover:bg-neutral-700 rounded text-stone-200 outline-none">+</button>
-                  </div>
-                </div>
-                <div className="col-span-2 space-y-1 text-center pt-1.5">
+                <div className="space-y-1 text-center pt-1">
                   <div className="text-[8px] font-bold text-[#8a8a8a] uppercase flex justify-center items-center gap-1"><RotateCw className="w-3 h-3 text-[#00e09e]" /> Fine Rotation</div>
                   <div className="flex gap-1.5 justify-center">
-                    <button onClick={() => nudge('rCcw')} className="px-2 py-0.5 bg-neutral-800 hover:bg-neutral-700 rounded text-[9px]">↺ 0.5°</button>
-                    <button onClick={() => nudge('rCw')} className="px-2 py-0.5 bg-neutral-800 hover:bg-neutral-700 rounded text-[9px]">0.5° ↻</button>
+                    <button onClick={() => nudge('rCcw')} className="px-3 py-1 bg-neutral-800 hover:bg-neutral-700 rounded text-[9px]">↺ 0.5°</button>
+                    <button onClick={() => nudge('rCw')} className="px-3 py-1 bg-neutral-800 hover:bg-neutral-700 rounded text-[9px]">0.5° ↻</button>
                   </div>
                 </div>
               </div>
@@ -457,55 +497,33 @@ export default function DevPanel({
                     />
                   </div>
                 </div>
-                {/* Width degree */}
-                <div className="space-y-1">
+                {/* Unified Symmetric Layout Scale */}
+                <div className="space-y-1.5 p-2 bg-neutral-950/45 border border-neutral-850/60 rounded">
                   <div className="flex justify-between text-[11px]">
-                    <span className="text-stone-400">Width Degrees (Span)</span>
-                    <span className="font-mono text-[#00e09e]">{activeCfg.widthDeg.toFixed(7)}</span>
+                    <span className="text-stone-300 font-semibold">Symmetric Layout Scale</span>
+                    <span className="font-mono text-[#00e09e]">{activeCfg.widthDeg.toFixed(7)}°</span>
                   </div>
                   <div className="flex gap-2 items-center">
                     <input
                       type="range"
                       min="0.0001"
-                      max="0.05"
+                      max="0.03"
                       step="0.000001"
                       value={activeCfg.widthDeg}
-                      onChange={(e) => updateActiveOverlayValue('widthDeg', parseFloat(e.target.value))}
+                      onChange={(e) => updateSymmetricScale(parseFloat(e.target.value))}
                       className="flex-1 accent-[#00e09e] h-1.5 bg-neutral-850"
                     />
                     <input
                       type="number"
                       step="0.000001"
                       value={activeCfg.widthDeg}
-                      onChange={(e) => updateActiveOverlayValue('widthDeg', parseFloat(e.target.value) || 0.001)}
+                      onChange={(e) => updateSymmetricScale(parseFloat(e.target.value) || 0.001)}
                       className="w-24 text-center bg-neutral-800 border border-neutral-700 text-[10.5px] py-0.5 rounded focus:outline-none font-mono text-[#00e09e]"
                     />
                   </div>
-                </div>
-                {/* Height degree */}
-                <div className="space-y-1">
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-stone-400">Height Degrees (Span)</span>
-                    <span className="font-mono text-[#00e09e]">{activeCfg.heightDeg.toFixed(7)}</span>
-                  </div>
-                  <div className="flex gap-2 items-center">
-                    <input
-                      type="range"
-                      min="0.0001"
-                      max="0.05"
-                      step="0.000001"
-                      value={activeCfg.heightDeg}
-                      onChange={(e) => updateActiveOverlayValue('heightDeg', parseFloat(e.target.value))}
-                      className="flex-1 accent-[#00e09e] h-1.5 bg-neutral-850"
-                    />
-                    <input
-                      type="number"
-                      step="0.000001"
-                      value={activeCfg.heightDeg}
-                      onChange={(e) => updateActiveOverlayValue('heightDeg', parseFloat(e.target.value) || 0.001)}
-                      className="w-24 text-center bg-neutral-800 border border-neutral-700 text-[10.5px] py-0.5 rounded focus:outline-none font-mono text-[#00e09e]"
-                    />
-                  </div>
+                  <p className="text-[8px] text-stone-500 leading-normal">
+                    Adjusts scale symmetrically, preventing aspect ratio distortion. Dimensions: {activeCfg.widthDeg.toFixed(6)}°W × {activeCfg.heightDeg.toFixed(6)}°H.
+                  </p>
                 </div>
               </>
             ) : (
@@ -556,11 +574,11 @@ export default function DevPanel({
                     />
                   </div>
                 </div>
-                {/* Width */}
-                <div className="space-y-1">
+                {/* Unified Symmetric Spatial Scale */}
+                <div className="space-y-1.5 p-2 bg-neutral-950/45 border border-neutral-850/60 rounded">
                   <div className="flex justify-between text-[11px]">
-                    <span className="text-stone-400">Width (pixels)</span>
-                    <span className="font-mono text-[#00e09e]">{activeCfg.w}px</span>
+                    <span className="text-stone-300 font-semibold">Symmetric Pixel Scale</span>
+                    <span className="font-mono text-[#00e09e]">{activeCfg.w} px</span>
                   </div>
                   <div className="flex gap-2 items-center">
                     <input
@@ -568,39 +586,19 @@ export default function DevPanel({
                       min="50"
                       max="1500"
                       value={activeCfg.w}
-                      onChange={(e) => updateActiveOverlayValue('w', parseInt(e.target.value))}
+                      onChange={(e) => updateSymmetricScale(parseInt(e.target.value))}
                       className="flex-1 accent-[#00e09e] h-1 bg-neutral-800"
                     />
                     <input
                       type="number"
                       value={activeCfg.w}
-                      onChange={(e) => updateActiveOverlayValue('w', parseInt(e.target.value) || 100)}
-                      className="w-14 text-center bg-neutral-800 border border-neutral-700 text-xs py-0.5 rounded focus:outline-none"
+                      onChange={(e) => updateSymmetricScale(parseInt(e.target.value) || 100)}
+                      className="w-14 text-center bg-neutral-800 border border-neutral-700 text-xs py-0.5 rounded focus:outline-none font-mono text-[#00e09e]"
                     />
                   </div>
-                </div>
-                {/* Height */}
-                <div className="space-y-1">
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-stone-400">Height (pixels)</span>
-                    <span className="font-mono text-[#00e09e]">{activeCfg.h}px</span>
-                  </div>
-                  <div className="flex gap-2 items-center">
-                    <input
-                      type="range"
-                      min="50"
-                      max="1500"
-                      value={activeCfg.h}
-                      onChange={(e) => updateActiveOverlayValue('h', parseInt(e.target.value))}
-                      className="flex-1 accent-[#00e09e] h-1 bg-neutral-800"
-                    />
-                    <input
-                      type="number"
-                      value={activeCfg.h}
-                      onChange={(e) => updateActiveOverlayValue('h', parseInt(e.target.value) || 100)}
-                      className="w-14 text-center bg-neutral-800 border border-neutral-700 text-xs py-0.5 rounded focus:outline-none"
-                    />
-                  </div>
+                  <p className="text-[8px] text-stone-500 leading-normal">
+                    Adjusts the pixel scale of the viewport plan symmetrically. Size: {activeCfg.w} × {activeCfg.h} pixels.
+                  </p>
                 </div>
               </>
             )}
