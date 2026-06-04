@@ -5,14 +5,13 @@ import { OverlayConfig, MapTileStyle, OverlayMode } from '../types';
 import { getGeneratedSitePlanSVG } from '../utils/sitePlans';
 
 interface MapContainerProps {
-  activeOverlayTab: 'a' | 'b';
+  activeOverlayTab: 'a' | 'b' | 'combined';
   overlayConfigs: { a: OverlayConfig; b: OverlayConfig };
   setOverlayConfigs: React.Dispatch<React.SetStateAction<{ a: OverlayConfig; b: OverlayConfig }>>;
   mapStyle: MapTileStyle;
   overlayMode: OverlayMode;
   setMapZoomState: (zoom: number) => void;
   mapRef: React.MutableRefObject<L.Map | null>;
-  showDevTools: boolean;
 }
 
 export default function MapContainer({
@@ -23,7 +22,6 @@ export default function MapContainer({
   overlayMode,
   setMapZoomState,
   mapRef,
-  showDevTools,
 }: MapContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mapInitialized, setMapInitialized] = useState(false);
@@ -294,8 +292,8 @@ export default function MapContainer({
   }, [overlayMode]);
 
   // Center Coordinates for Morjim Estate
-  const CENTER_LAT = 15.640944;
-  const CENTER_LNG = 73.743222;
+  const CENTER_LAT = 15.641513006109792;
+  const CENTER_LNG = 73.7436729669571;
 
   // Set up Map instance (runs once on mount)
   useEffect(() => {
@@ -304,7 +302,7 @@ export default function MapContainer({
     // Leaflet map container initialization
     const map = L.map(containerRef.current, {
       center: [CENTER_LAT, CENTER_LNG],
-      zoom: 17,
+      zoom: 19,
       zoomControl: false,
       attributionControl: true,
     });
@@ -345,59 +343,8 @@ export default function MapContainer({
     // Add satellite layer as default
     googleSatellite.addTo(map);
 
-    // Custom branded pins using HTML div markers
-    const createCustomIcon = (phaseNumber: string, bgColor: string, borderColor: string) => {
-      return L.divIcon({
-        className: 'custom-leaflet-pin',
-        html: `
-          <div class="relative group cursor-pointer">
-            <!-- Pulsing outer halo -->
-            <div class="absolute -top-1.5 -left-1.5 w-10 h-10 bg-white/30 rounded-full animate-ping pointer-events-none duration-1000"></div>
-            <!-- Pin Center -->
-            <div 
-              style="background-color: ${bgColor}; border-color: #ffffff;" 
-              class="relative w-7 h-7 border-[2.5px] rounded-full shadow-lg flex items-center justify-center font-serif text-xs font-bold text-white transition-all transform duration-300 hover:scale-110 active:scale-95"
-            >
-              ${phaseNumber}
-            </div>
-          </div>
-        `,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-      });
-    };
+    // Markers and popups have been removed per user preference for a cleaner landscape view
 
-    // Pin for Phase 1
-    const p1Marker = L.marker([CENTER_LAT, CENTER_LNG], {
-      icon: createCustomIcon('1', '#008e62', '#006b4a'),
-    }).addTo(map);
-
-    p1Marker.bindPopup(`
-      <div class="p-2 font-sans select-none text-[#1a1a1a]">
-        <div class="font-serif text-sm font-semibold text-[#008e62] border-b border-[#e6f5f0] pb-1 mb-1">
-          Morjim Estate — Phase 1
-        </div>
-        <div class="text-[11px] text-[#4a4a4a]">
-          Premium luxury estate villas located in the serene coastal woodlands of Morjim, North Goa.
-        </div>
-      </div>
-    `);
-
-    // Pin for Phase 2 (nearby)
-    const p2Marker = L.marker([CENTER_LAT + 0.002, CENTER_LNG + 0.003], {
-      icon: createCustomIcon('2', '#c8860a', '#a06a00'),
-    }).addTo(map);
-
-    p2Marker.bindPopup(`
-      <div class="p-2 font-sans select-none text-[#1a1a1a]">
-        <div class="font-serif text-sm font-semibold text-[#c8860a] border-b border-amber-50 pb-1 mb-1">
-          Morjim Estate — Phase 2
-        </div>
-        <div class="text-[11px] text-[#4a4a4a]">
-          Boutique forest villas offering pristine private sanctuaries near Chapora river and Morjim beach.
-        </div>
-      </div>
-    `);
 
     const updatePixels = () => {
       try {
@@ -620,7 +567,7 @@ export default function MapContainer({
           : '/assets/siteplan/site-plan_ME2.png';
         const isA = id === 'a';
         const isTransforming = activeTransform?.id === id;
-        const isSelected = showDevTools && activeOverlayTab === id;
+        const isSelected = false;
 
         return (
           <div
@@ -720,14 +667,7 @@ export default function MapContainer({
         );
       })}
 
-      {/* Compass/Attribution Rose Overlay */}
-      <div className="absolute top-4 left-4 z-10 pointer-events-none bg-white/90 backdrop-blur-sm border border-[#d8d0c8] p-2.5 rounded-md shadow-sm hidden md:flex items-center gap-2.5 select-none text-[#1a1a1a]">
-        <Compass className="w-5 h-5 text-[#008e62] animate-spin-slow" />
-        <div>
-          <div className="text-[8px] font-bold tracking-[2px] uppercase text-[#8a8a8a]">Goa North</div>
-          <div className="font-serif text-[11px] font-semibold text-[#1a1a1a]">Morjim Site Alignment</div>
-        </div>
-      </div>
+
 
       {/* Map Custom Zoom Utilities Controls */}
       <div className="absolute bottom-5 right-5 flex flex-col gap-1.5 z-10 shadow-md">

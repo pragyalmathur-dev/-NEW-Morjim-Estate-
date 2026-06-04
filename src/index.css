@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Mulish", system-ui, sans-serif;
+  --font-serif: "Cardo", Georgia, serif;
+}
+
 #map {
   width: 100% !important;
   height: 100% !important;
