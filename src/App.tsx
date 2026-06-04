@@ -6,8 +6,8 @@ import { OverlayConfig, ProjectPhase, MapTileStyle, OverlayMode } from './types'
 import L from 'leaflet';
 
 // Sample coordinates representing Morjim, North Goa
-const PROJECT_A_COORDS = { lat: 15.641536252028756, lng: 73.74335110187532 };
-const PROJECT_B_COORDS = { lat: 15.641435519694143, lng: 73.7432384490967 };
+const PROJECT_A_COORDS = { lat: 15.64249708103591, lng: 73.74422550201417 };
+const PROJECT_B_COORDS = { lat: 15.642776362003868, lng: 73.74419404434208 };
 
 // Premium Architectural Renders configuration for Vianaar Morjim Estates I & II
 const ESTATE_RENDERS = {
@@ -54,6 +54,10 @@ export default function App() {
   const [overlayMode, setOverlayMode] = useState<OverlayMode>('geo');
   const [mapZoomState, setMapZoomState] = useState(19);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [alignModeEnabled, setAlignModeEnabled] = useState(false);
+  const [alignSelectedId, setAlignSelectedId] = useState<'a' | 'b'>('b');
+  const [configCopied, setConfigCopied] = useState(false);
+  const [copiedId, setCopiedId] = useState<'a' | 'b' | 'full' | null>(null);
   
   // Enquiry Modal States
   const [isEnquiryOpen, setIsEnquiryOpen] = useState(false);
@@ -76,7 +80,7 @@ export default function App() {
 
   // Initialize Overlay configurations (Restoring from localStorage if available)
   const [overlayConfigs, setOverlayConfigs] = useState<{ a: OverlayConfig; b: OverlayConfig }>(() => {
-    const saved = localStorage.getItem('vianaar_morjim_alignment_v5');
+    const saved = localStorage.getItem('vianaar_morjim_alignment_v6');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -95,12 +99,12 @@ export default function App() {
         y: 195,
         w: 382,
         h: 279,
-        r: -143.6,
+        r: -14.9,
         o: 100,
         lat: PROJECT_A_COORDS.lat,
         lng: PROJECT_A_COORDS.lng,
-        widthDeg: 0.0017719999999999995,
-        heightDeg: 0.0010478173618940247,
+        widthDeg: 0.0034114026751831403,
+        heightDeg: 0.0020172273992486553,
         visible: true,
         localImageSrc: null,
       },
@@ -109,12 +113,12 @@ export default function App() {
         y: 103,
         w: 441,
         h: 301,
-        r: -142.69999999999993,
+        r: -14.8,
         o: 100,
         lat: PROJECT_B_COORDS.lat,
         lng: PROJECT_B_COORDS.lng,
-        widthDeg: 0.0017319999999999994,
-        heightDeg: 0.0011198983384940466,
+        widthDeg: 0.003396683398,
+        heightDeg: 0.002011435145,
         visible: true,
         localImageSrc: null,
       },
@@ -127,7 +131,7 @@ export default function App() {
       a: { ...overlayConfigs.a, localImageSrc: null },
       b: { ...overlayConfigs.b, localImageSrc: null },
     };
-    localStorage.setItem('vianaar_morjim_alignment_v5', JSON.stringify(serialized));
+    localStorage.setItem('vianaar_morjim_alignment_v6', JSON.stringify(serialized));
   }, [overlayConfigs]);
 
   // Project details definitions matching top-end architectural specs
@@ -207,6 +211,125 @@ export default function App() {
     }, 2800);
   };
 
+  const handleNudge = (direction: 'up' | 'down' | 'left' | 'right' | 'scale-up' | 'scale-down' | 'width-up' | 'width-down' | 'height-up' | 'height-down' | 'rotate-left' | 'rotate-right') => {
+    setOverlayConfigs((prev) => {
+      const config = prev[alignSelectedId];
+      let { lat, lng, widthDeg, heightDeg, r, x, y, w, h } = config;
+
+      if (overlayMode === 'geo') {
+        const moveStep = 0.000002; // ultra high precision step for spatial fine-tuning
+        const rotateStep = 0.2;     // degrees
+        const scaleStep = 1.002;    // multiplier for aspect-locked custom scaling
+        
+        switch (direction) {
+          case 'up':
+            lat += moveStep;
+            break;
+          case 'down':
+            lat -= moveStep;
+            break;
+          case 'left':
+            lng -= moveStep;
+            break;
+          case 'right':
+            lng += moveStep;
+            break;
+          case 'scale-up':
+            widthDeg = parseFloat((widthDeg * scaleStep).toFixed(12));
+            heightDeg = parseFloat((heightDeg * scaleStep).toFixed(12));
+            break;
+          case 'scale-down':
+            widthDeg = parseFloat((widthDeg / scaleStep).toFixed(12));
+            heightDeg = parseFloat((heightDeg / scaleStep).toFixed(12));
+            break;
+          case 'width-up':
+            widthDeg = parseFloat((widthDeg * scaleStep).toFixed(12));
+            break;
+          case 'width-down':
+            widthDeg = parseFloat((widthDeg / scaleStep).toFixed(12));
+            break;
+          case 'height-up':
+            heightDeg = parseFloat((heightDeg * scaleStep).toFixed(12));
+            break;
+          case 'height-down':
+            heightDeg = parseFloat((heightDeg / scaleStep).toFixed(12));
+            break;
+          case 'rotate-left':
+            r = parseFloat((r - rotateStep).toFixed(2));
+            break;
+          case 'rotate-right':
+            r = parseFloat((r + rotateStep).toFixed(2));
+            break;
+        }
+      } else {
+        const moveStep = 1; // screen px step
+        const rotateStep = 0.2;
+        const scaleStep = 1.002;
+
+        switch (direction) {
+          case 'up':
+            y -= moveStep;
+            break;
+          case 'down':
+            y += moveStep;
+            break;
+          case 'left':
+            x -= moveStep;
+            break;
+          case 'right':
+            x += moveStep;
+            break;
+          case 'scale-up':
+            w = Math.max(20, Math.round(w * scaleStep));
+            h = Math.max(20, Math.round(h * scaleStep));
+            break;
+          case 'scale-down':
+            w = Math.max(20, Math.round(w / scaleStep));
+            h = Math.max(20, Math.round(h / scaleStep));
+            break;
+          case 'width-up':
+            w = Math.max(20, Math.round(w * scaleStep));
+            break;
+          case 'width-down':
+            w = Math.max(20, Math.round(w / scaleStep));
+            break;
+          case 'height-up':
+            h = Math.max(20, Math.round(h * scaleStep));
+            break;
+          case 'height-down':
+            h = Math.max(20, Math.round(h / scaleStep));
+            break;
+          case 'rotate-left':
+            r = parseFloat((r - rotateStep).toFixed(2));
+            break;
+          case 'rotate-right':
+            r = parseFloat((r + rotateStep).toFixed(2));
+            break;
+        }
+      }
+
+      // wrap rotation boundaries
+      if (r > 180) r -= 360;
+      if (r < -180) r += 360;
+
+      return {
+        ...prev,
+        [alignSelectedId]: {
+          ...config,
+          lat,
+          lng,
+          widthDeg,
+          heightDeg,
+          r,
+          x,
+          y,
+          w,
+          h,
+        }
+      };
+    });
+  };
+
   return (
     <div id="app" className="relative flex h-screen w-screen overflow-hidden bg-[#faf8f4] font-sans antialiased text-[#1a1a1a]">
       
@@ -214,12 +337,12 @@ export default function App() {
       {!isSidebarOpen && (
         <button
           onClick={() => setIsSidebarOpen(true)}
-          className="absolute top-4 left-4 z-[1700] bg-[#FAF8F5] border border-[#ebdcd0]/80 hover:bg-[#ebdcd0]/10 p-3.5 shadow-md transition-all duration-200 text-[#1c3c31] hover:scale-105 flex flex-col gap-1 w-11 h-11 justify-center items-center cursor-pointer rounded-none"
+          className="absolute top-4 left-4 z-[1700] bg-[#FAF8F5] border border-[#ebdcd0]/80 hover:bg-[#ebdcd0]/10 shadow-md transition-all duration-200 text-[#1c3c31] hover:scale-105 flex flex-col gap-1.5 w-11 h-11 p-0 justify-center items-center cursor-pointer rounded-none"
           title="Open Menu"
         >
-          <span className="w-5 h-[1.5px] bg-[#1c3c31]" />
-          <span className="w-5 h-[1.5px] bg-[#1c3c31]" />
-          <span className="w-5 h-[1.5px] bg-[#1c3c31]" />
+          <span className="w-5 h-[1px] bg-[#1c3c31]" />
+          <span className="w-5 h-[1px] bg-[#1c3c31]" />
+          <span className="w-5 h-[1px] bg-[#1c3c31]" />
         </button>
       )}
 
@@ -304,6 +427,8 @@ export default function App() {
           overlayMode={overlayMode}
           setMapZoomState={setMapZoomState}
           mapRef={mapRef}
+          alignModeEnabled={alignModeEnabled}
+          alignSelectedId={alignSelectedId}
         />
 
       </div>

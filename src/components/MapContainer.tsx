@@ -296,8 +296,8 @@ export default function MapContainer({
   }, [overlayMode]);
 
   // Center Coordinates for Morjim Estate
-  const CENTER_LAT = 15.641513006109792;
-  const CENTER_LNG = 73.7436729669571;
+  const CENTER_LAT = 15.642636721519889;
+  const CENTER_LNG = 73.74420977317812;
 
   // Set up Map instance (runs once on mount)
   useEffect(() => {
