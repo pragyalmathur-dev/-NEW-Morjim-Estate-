@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, Eye, EyeOff, Check, X, ShieldCheck, Mail, Phone, User, Landmark, Building2, HelpCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Sparkles, Eye, EyeOff, Check, X, ShieldCheck, Mail, Phone, User, Landmark, Building2, HelpCircle, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import MapContainer from './components/MapContainer';
 import { OverlayConfig, ProjectPhase, MapTileStyle, OverlayMode } from './types';
@@ -53,6 +53,7 @@ export default function App() {
   const [mapStyle, setMapStyle] = useState<MapTileStyle>('satellite');
   const [overlayMode, setOverlayMode] = useState<OverlayMode>('geo');
   const [mapZoomState, setMapZoomState] = useState(19);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Enquiry Modal States
   const [isEnquiryOpen, setIsEnquiryOpen] = useState(false);
@@ -207,58 +208,92 @@ export default function App() {
   };
 
   return (
-    <div id="app" className="flex h-screen w-screen overflow-hidden bg-[#faf8f4] font-sans antialiased text-[#1a1a1a]">
+    <div id="app" className="relative flex h-screen w-screen overflow-hidden bg-[#faf8f4] font-sans antialiased text-[#1a1a1a]">
       
-      {/* SIDEBAR NAVIGATION BAR */}
-      <Sidebar
-        phases={phases}
-        activeOverlayTab={activeOverlayTab}
-        setActiveOverlayTab={(id) => {
-          setActiveOverlayTab(id);
-          if (id === 'combined') {
-            setSelectedVilla(null);
-            setOverlayConfigs((prev) => ({
-              ...prev,
-              a: { ...prev.a, o: 100 },
-              b: { ...prev.b, o: 100 },
-            }));
-          } else {
-            setSelectedVilla(id === 'a' ? '1' : 'A');
-            // Automatically focus / set opacity of current estate to 100 and the other to 30
-            setOverlayConfigs((prev) => ({
-              ...prev,
-              [id]: { ...prev[id], o: 100 },
-              [id === 'a' ? 'b' : 'a']: { ...prev[id === 'a' ? 'b' : 'a'], o: 30 },
-            }));
-          }
-        }}
-        overlayConfigs={overlayConfigs}
-        updateOverlayOpacity={updateOverlayOpacity}
-        updateOverlayVisibility={updateOverlayVisibility}
-        mapStyle={mapStyle}
-        setMapStyle={setMapStyle}
-        onEnquireClick={(prefilledMessage?: string) => {
-          if (prefilledMessage) {
-            setEnquiryForm((prev) => ({
-              ...prev,
-              message: prefilledMessage,
-              phase: activeOverlayTab === 'a' ? 'Phase 1 - Morjim Estate' : activeOverlayTab === 'b' ? 'Phase 2 - Morjim Estate' : 'Combined Morjim Estates',
-            }));
-          }
-          setIsEnquiryOpen(true);
-        }}
-        onFlyToProject={handleFlyToProject}
-        selectedVilla={selectedVilla}
-        setSelectedVilla={setSelectedVilla}
-        onOpenRenders={(phaseId) => {
-          setRendersActiveId(phaseId);
-          setRendersActiveImageIdx(0);
-          setRendersModalOpen(true);
-        }}
-      />
+      {/* 3 Parallel Line Hamburger Button to open menu, visible when sidebar is closed */}
+      {!isSidebarOpen && (
+        <button
+          onClick={() => setIsSidebarOpen(true)}
+          className="absolute top-4 left-4 z-[1700] bg-[#FAF8F5] border border-[#ebdcd0]/80 hover:bg-[#ebdcd0]/10 p-3.5 shadow-md transition-all duration-200 text-[#1c3c31] hover:scale-105 flex flex-col gap-1 w-11 h-11 justify-center items-center cursor-pointer rounded-none"
+          title="Open Menu"
+        >
+          <span className="w-5 h-[1.5px] bg-[#1c3c31]" />
+          <span className="w-5 h-[1.5px] bg-[#1c3c31]" />
+          <span className="w-5 h-[1.5px] bg-[#1c3c31]" />
+        </button>
+      )}
+
+      {/* Backdrop overlay for closing the drawer, visible when sidebar is open */}
+      {isSidebarOpen && (
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 bg-transparent z-[1800] pointer-events-auto"
+        />
+      )}
+
+      {/* SIDEBAR NAVIGATION DRAWER */}
+      <div
+        className={`fixed top-0 left-0 h-full z-[1900] bg-[#FAF8F5] transition-transform duration-300 ease-in-out shadow-2xl border-r border-[#ebdcd0]/70 flex flex-col transform ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        style={{ width: '320px' }}
+      >
+        <Sidebar
+          phases={phases}
+          activeOverlayTab={activeOverlayTab}
+          setActiveOverlayTab={(id) => {
+            setActiveOverlayTab(id);
+            if (id === 'combined') {
+              setSelectedVilla(null);
+              setOverlayConfigs((prev) => ({
+                ...prev,
+                a: { ...prev.a, o: 100 },
+                b: { ...prev.b, o: 100 },
+              }));
+            } else {
+              setSelectedVilla(id === 'a' ? '1' : 'A');
+              // Automatically focus / set opacity of current estate to 100 and the other to 30
+              setOverlayConfigs((prev) => ({
+                ...prev,
+                [id]: { ...prev[id], o: 100 },
+                [id === 'a' ? 'b' : 'a']: { ...prev[id === 'a' ? 'b' : 'a'], o: 30 },
+              }));
+            }
+          }}
+          overlayConfigs={overlayConfigs}
+          updateOverlayOpacity={updateOverlayOpacity}
+          updateOverlayVisibility={updateOverlayVisibility}
+          mapStyle={mapStyle}
+          setMapStyle={setMapStyle}
+          onEnquireClick={(prefilledMessage?: string) => {
+            if (prefilledMessage) {
+              setEnquiryForm((prev) => ({
+                ...prev,
+                message: prefilledMessage,
+                phase: activeOverlayTab === 'a' ? 'Phase 1 - Morjim Estate' : activeOverlayTab === 'b' ? 'Phase 2 - Morjim Estate' : 'Combined Morjim Estates',
+              }));
+            }
+            setIsEnquiryOpen(true);
+          }}
+          onFlyToProject={handleFlyToProject}
+          selectedVilla={selectedVilla}
+          setSelectedVilla={setSelectedVilla}
+          onOpenRenders={(phaseId) => {
+            setRendersActiveId(phaseId);
+            setRendersActiveImageIdx(0);
+            setRendersModalOpen(true);
+          }}
+          onCloseSidebar={() => setIsSidebarOpen(false)}
+        />
+      </div>
 
       {/* MAP VIEWER PORTAL */}
-      <div id="map-container" className="flex-1 h-full relative flex flex-col overflow-hidden">
+      <div 
+        id="map-container" 
+        className={`flex-1 h-full relative flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${
+          isSidebarOpen ? 'pl-[0px]' : 'pl-0'
+        }`}
+      >
         
         {/* Dynamic Map and Overlay engine */}
         <MapContainer
@@ -270,6 +305,7 @@ export default function App() {
           setMapZoomState={setMapZoomState}
           mapRef={mapRef}
         />
+
       </div>
 
       {/* LUXURY VIANAAR ENQUIRY LIGHTBOX POPUP */}

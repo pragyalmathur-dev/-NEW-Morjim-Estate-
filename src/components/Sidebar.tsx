@@ -17,6 +17,7 @@ interface SidebarProps {
   selectedVilla: string | null;
   setSelectedVilla: (villaId: string | null) => void;
   onOpenRenders: (phaseId: 'a' | 'b') => void;
+  onCloseSidebar?: () => void;
 }
 
 export default function Sidebar({
@@ -33,6 +34,7 @@ export default function Sidebar({
   selectedVilla,
   setSelectedVilla,
   onOpenRenders,
+  onCloseSidebar,
 }: SidebarProps) {
   return (
     <aside
@@ -41,8 +43,14 @@ export default function Sidebar({
     >
       {/* Sidebar Header - Center aligned Vianaar luxury brand style */}
       <div className="bg-[#FAF8F5] px-6 py-9 border-b border-[#ebdcd0]/45 shrink-0 text-center relative select-none">
-        {/* elegant decorative X icon on the top right like in the image */}
-        <div className="absolute top-4 right-4 text-[#8c7a6b]/40 hover:text-[#8c7a6b] font-sans text-xs font-light select-none transition-colors cursor-pointer">✕</div>
+        {/* elegant decorative X icon on the top right like in the image to close the sidebar */}
+        <div 
+          onClick={onCloseSidebar}
+          className="absolute top-4 right-4 text-[#8c7a6b]/40 hover:text-[#8c7a6b] font-sans text-xs font-light select-none transition-colors cursor-pointer p-1"
+          title="Close Menu"
+        >
+          ✕
+        </div>
 
         <div className="text-[10px] tracking-[4.5px] uppercase font-light text-[#8c7a6b] font-sans mb-1.5">
           Vianaar Homes
@@ -51,7 +59,7 @@ export default function Sidebar({
           Morjim
         </h1>
         <div className="font-serif italic text-[24px] text-[#1c3c31]/85 mt-0.5 tracking-wide select-none">
-          {activeOverlayTab === 'combined' ? 'Combined View' : activeOverlayTab === 'a' ? 'Estate 1' : 'Estate 2'}
+          Estate
         </div>
         <div className="text-[9px] tracking-[3.5px] font-light text-[#8c7a6b] uppercase font-sans mt-3.5">
           Morjim . North Goa

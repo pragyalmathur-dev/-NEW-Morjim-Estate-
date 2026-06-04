@@ -12,6 +12,8 @@ interface MapContainerProps {
   overlayMode: OverlayMode;
   setMapZoomState: (zoom: number) => void;
   mapRef: React.MutableRefObject<L.Map | null>;
+  alignModeEnabled?: boolean;
+  alignSelectedId?: 'a' | 'b';
 }
 
 export default function MapContainer({
@@ -22,6 +24,8 @@ export default function MapContainer({
   overlayMode,
   setMapZoomState,
   mapRef,
+  alignModeEnabled = false,
+  alignSelectedId = 'a',
 }: MapContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mapInitialized, setMapInitialized] = useState(false);
@@ -304,7 +308,7 @@ export default function MapContainer({
       center: [CENTER_LAT, CENTER_LNG],
       zoom: 19,
       zoomControl: false,
-      attributionControl: true,
+      attributionControl: false,
     });
 
     mapRef.current = map;
@@ -567,7 +571,7 @@ export default function MapContainer({
           : '/assets/siteplan/site-plan_ME2.png';
         const isA = id === 'a';
         const isTransforming = activeTransform?.id === id;
-        const isSelected = false;
+        const isSelected = alignModeEnabled && (alignSelectedId === id);
 
         return (
           <div
