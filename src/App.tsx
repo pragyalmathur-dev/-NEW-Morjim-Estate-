@@ -10,39 +10,45 @@ const PROJECT_A_COORDS = { lat: 15.64249708103591, lng: 73.74422550201417 };
 const PROJECT_B_COORDS = { lat: 15.642776362003868, lng: 73.74419404434208 };
 
 // Premium Architectural Renders configuration for Vianaar Morjim Estates I & II
-const ESTATE_RENDERS = {
+const ESTATE_RENDERS: Record<'a' | 'b', Array<{ url: string; title: string; sub?: string; desc: string }>> = {
   a: [
     {
-      url: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1200&q=80',
-      title: 'ESTATE 1 — GRAND WOODLAND PALACE FACADE',
-      desc: 'Elegant staved-wood columns framing the premium double-height lap pool deck.'
+      url: '/assets/renders/ME1_Front.jpg',
+      title: 'Morjim Estate 1',
+      sub: 'Front View',
+      desc: 'Note: Visual renders are indicative and subject to modification to align with final design requirements.'
     },
     {
-      url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
-      title: 'ESTATE 1 — TRIPLE-ASPECT SUNKEN LOUNGE',
-      desc: 'Seamless transition between imported travertine indoor flooring and nature trails.'
-    },
-    {
-      url: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80',
-      title: 'ESTATE 1 — MASTER BEDROOM CANOPY VIEW',
-      desc: 'Floor-to-ceiling glass wrapping around ancient forest groves with private wrap-around terrace.'
+      url: '/assets/renders/ME1_Back.jpg',
+      title: 'Morjim Estate 1',
+      sub: 'Back View',
+      desc: 'Note: Visual renders are indicative and subject to modification to align with final design requirements.'
     }
   ],
   b: [
     {
-      url: 'https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=1200&q=80',
-      title: 'ESTATE 2 — DEEP FOREST SUNSET VILLA',
-      desc: 'Warm indirect cove lights reflecting on infinity-edge pools nestled in dense banyan canopies.'
+      url: '/assets/renders/ME2_D_Front.jpg',
+      title: 'Morjim Estate 2 (Villa D)',
+      sub: 'Front View',
+      desc: 'Note: Visual renders are indicative and subject to modification to align with final design requirements.'
     },
     {
-      url: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80',
-      title: 'ESTATE 2 — FLOATING GLASS TEA PAVILION',
-      desc: 'Private outdoor pavilion suspended over natural springwater cascades.'
+      url: '/assets/renders/ME2_D_Back.jpg',
+      title: 'Morjim Estate 2 (Villa D)',
+      sub: 'Back View',
+      desc: 'Note: Visual renders are indicative and subject to modification to align with final design requirements.'
     },
     {
-      url: 'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=1200&q=80',
-      title: 'ESTATE 2 — HYDRODYNAMIC PRIVATE GARDEN SPA',
-      desc: 'Dappled sunlight filtering through teak leaves over the custom-crafted stone wellness pool.'
+      url: '/assets/renders/ME2_E_Front.jpg',
+      title: 'Morjim Estate 2 (Villa E)',
+      sub: 'Front View',
+      desc: 'Note: Visual renders are indicative and subject to modification to align with final design requirements.'
+    },
+    {
+      url: '/assets/renders/ME2_E_Back.jpg',
+      title: 'Morjim Estate 2 (Villa E)',
+      sub: 'Back View',
+      desc: 'Note: Visual renders are indicative and subject to modification to align with final design requirements.'
     }
   ]
 };
@@ -601,7 +607,7 @@ export default function App() {
               <img
                 src={ESTATE_RENDERS[rendersActiveId][rendersActiveImageIdx].url}
                 alt={ESTATE_RENDERS[rendersActiveId][rendersActiveImageIdx].title}
-                className="w-full h-full object-cover select-none transition-all duration-500"
+                className="w-full h-full object-contain select-none transition-all duration-500"
                 referrerPolicy="no-referrer"
               />
 
@@ -622,9 +628,14 @@ export default function App() {
               <span className="text-[10px] tracking-[4px] text-[#ebdcd0] uppercase font-light">
                 {rendersActiveId === 'a' ? 'Morjim Estate I Renders' : 'Morjim Estate II Renders'}
               </span>
-              <h4 className="font-serif text-lg tracking-wide font-normal text-white mt-1.5 mb-1 select-none">
+              <h4 className="font-serif text-lg tracking-wide font-normal text-white mt-1.5 mb-0.5 select-none">
                 {ESTATE_RENDERS[rendersActiveId][rendersActiveImageIdx].title}
               </h4>
+              {ESTATE_RENDERS[rendersActiveId][rendersActiveImageIdx].sub && (
+                <div className="text-[11px] tracking-[2px] text-[#ebdcd0]/90 uppercase font-light mb-2 select-none">
+                  {ESTATE_RENDERS[rendersActiveId][rendersActiveImageIdx].sub}
+                </div>
+              )}
               <p className="text-[#ebdcd0]/75 text-[11px] font-light max-w-xl mx-auto leading-relaxed select-none">
                 {ESTATE_RENDERS[rendersActiveId][rendersActiveImageIdx].desc}
               </p>

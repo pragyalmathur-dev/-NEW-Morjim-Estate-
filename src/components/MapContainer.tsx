@@ -588,7 +588,7 @@ export default function MapContainer({
               transformOrigin: 'center center',
               zIndex: isSelected ? 100 : 10,
             }}
-            className={`transition-all duration-75 shadow-lg select-none ${
+            className={`transition-[opacity,border-color,box-shadow] duration-200 shadow-lg select-none ${
               isSelected 
                 ? 'border-2 border-[#00e09e] ring-4 ring-emerald-500/10 rounded' 
                 : 'border border-transparent'
