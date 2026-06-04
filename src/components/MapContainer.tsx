@@ -674,21 +674,30 @@ export default function MapContainer({
 
 
       {/* Map Custom Zoom Utilities Controls */}
-      <div className="absolute bottom-5 right-5 flex flex-col gap-1.5 z-10 shadow-md">
+      <div className="absolute bottom-5 right-5 flex flex-col gap-1.5 z-10">
         <button
-          onClick={() => mapRef.current?.zoomIn()}
-          className="w-9 h-9 bg-white hover:bg-[#008e62] hover:text-white border border-[#d8d0c8] text-[#1a1a1a] font-serif text-lg leading-none font-bold rounded shadow transition-all cursor-pointer flex items-center justify-center focus:outline-none"
-          title="Zoom In"
+          onClick={() => mapRef.current?.setView([CENTER_LAT, CENTER_LNG], 19)}
+          className="w-9 h-9 bg-[#1c3c31] hover:bg-[#1a382e] text-[#FAF8F5] border border-[#1c3c31] rounded shadow-md transition-all cursor-pointer flex items-center justify-center focus:outline-none hover:scale-105 active:scale-95 group"
+          title="Back to Site"
         >
-          +
+          <Compass className="w-5 h-5 transition-transform duration-500 group-hover:rotate-180" />
         </button>
-        <button
-          onClick={() => mapRef.current?.zoomOut()}
-          className="w-9 h-9 bg-white hover:bg-[#008e62] hover:text-white border border-[#d8d0c8] text-[#1a1a1a] font-serif text-lg leading-none font-bold rounded shadow transition-all cursor-pointer flex items-center justify-center focus:outline-none"
-          title="Zoom Out"
-        >
-          −
-        </button>
+        <div className="flex flex-col gap-1.5 shadow-md rounded">
+          <button
+            onClick={() => mapRef.current?.zoomIn()}
+            className="w-9 h-9 bg-white hover:bg-[#008e62] hover:text-white border border-[#d8d0c8] text-[#1a1a1a] font-serif text-lg leading-none font-bold rounded-t shadow transition-all cursor-pointer flex items-center justify-center focus:outline-none"
+            title="Zoom In"
+          >
+            +
+          </button>
+          <button
+            onClick={() => mapRef.current?.zoomOut()}
+            className="w-9 h-9 bg-white hover:bg-[#008e62] hover:text-white border border-[#d8d0c8] text-[#1a1a1a] font-serif text-lg leading-none font-bold rounded-b shadow transition-all cursor-pointer flex items-center justify-center focus:outline-none"
+            title="Zoom Out"
+          >
+            −
+          </button>
+        </div>
       </div>
     </div>
   );
