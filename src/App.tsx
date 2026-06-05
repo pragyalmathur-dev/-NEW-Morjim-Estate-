@@ -81,6 +81,7 @@ export default function App() {
   const [rendersModalOpen, setRendersModalOpen] = useState(false);
   const [rendersActiveId, setRendersActiveId] = useState<'a' | 'b'>('a');
   const [rendersActiveImageIdx, setRendersActiveImageIdx] = useState(0);
+  const [rendersLoading, setRendersLoading] = useState<boolean>(true);
 
   // Floor Plans Modal States
   const [floorPlanModalOpen, setFloorPlanModalOpen] = useState(false);
@@ -135,6 +136,20 @@ export default function App() {
       img.onerror = null;
     };
   }, [floorPlanVilla, withDimension, floorLevel, floorPlanEstateId]);
+
+  // Pre-fetch all luxury architectural renders for instantaneous load time when users view them (0ms latency from browser disk cache)
+  useEffect(() => {
+    // Loop through all images across both estates and preload them in parallel
+    Object.values(ESTATE_RENDERS).flat().forEach((render) => {
+      const img = new Image();
+      img.src = render.url;
+    });
+  }, []);
+
+  // Monitor active architectural render selections and display smooth loaders
+  useEffect(() => {
+    setRendersLoading(true);
+  }, [rendersActiveId, rendersActiveImageIdx, rendersModalOpen]);
 
   // Reference for direct Leaflet map interactions
   const mapRef = useRef<L.Map | null>(null);
@@ -667,9 +682,23 @@ export default function App() {
               <img
                 src={ESTATE_RENDERS[rendersActiveId][rendersActiveImageIdx].url}
                 alt={ESTATE_RENDERS[rendersActiveId][rendersActiveImageIdx].title}
-                className="w-full h-full object-contain select-none transition-all duration-500"
+                className={`w-full h-full object-contain select-none transition-all duration-500 ${
+                  rendersLoading ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+                }`}
+                onLoad={() => setRendersLoading(false)}
+                onError={() => setRendersLoading(false)}
                 referrerPolicy="no-referrer"
               />
+
+              {/* Elegant Loading Spin Overlay */}
+              {rendersLoading && (
+                <div className="absolute inset-0 bg-stone-950/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-30 transition-all duration-300">
+                  <div className="w-9 h-9 border-2 border-[#ebdcd0]/20 border-t-[#ebdcd0] rounded-full animate-spin"></div>
+                  <span className="text-[10px] tracking-[4px] text-[#ebdcd0]/80 uppercase font-light font-sans select-none animate-pulse">
+                    Loading Architectural Render...
+                  </span>
+                </div>
+              )}
 
               {/* Right Arrow */}
               <button
