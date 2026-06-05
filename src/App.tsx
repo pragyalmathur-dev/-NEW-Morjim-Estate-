@@ -94,11 +94,50 @@ export default function App() {
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [floorPlanLoadState, setFloorPlanLoadState] = useState<'loading' | 'loaded' | 'failed'>('loading');
 
-  // Reset zoom on filter/floor plan changes
+  // Reset zoom and dynamically verify image size/status on filter/floor plan changes
   useEffect(() => {
     setFloorPlanLoadState('loading');
     setFloorPlanZoom(1.0);
     setFloorPlanPan({ x: 0, y: 0 });
+
+    const fileBaseName = `ME${floorPlanEstateId === 'a' ? '1' : '2'}_${floorPlanVilla}_${floorLevel}_${withDimension ? 'WD' : 'WOD'}`;
+    const imageUrl = `/assets/floorplans/${fileBaseName}.jpg`;
+
+    let isMounted = true;
+
+    fetch(imageUrl)
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error('Image not found on server or cannot be retrieved');
+        }
+        const blob = await res.blob();
+        // Since empty created files have 0 bytes, we intercept them and trigger the elegant fallback
+        if (blob.size < 100) {
+          throw new Error('Image is empty or uninitialized (0 bytes)');
+        }
+        
+        if (isMounted) {
+          // Pre-load layout image into memory to guarantee valid decoding
+          const img = new Image();
+          img.src = imageUrl;
+          img.onload = () => {
+            if (isMounted) setFloorPlanLoadState('loaded');
+          };
+          img.onerror = () => {
+            if (isMounted) setFloorPlanLoadState('failed');
+          };
+        }
+      })
+      .catch((err) => {
+        if (isMounted) {
+          console.warn("Floor plan file check triggered blueprint preview mode:", err.message);
+          setFloorPlanLoadState('failed');
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [floorPlanVilla, withDimension, floorLevel, floorPlanEstateId]);
 
   // Reference for direct Leaflet map interactions
