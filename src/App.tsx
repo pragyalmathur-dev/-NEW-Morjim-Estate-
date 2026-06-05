@@ -94,7 +94,7 @@ export default function App() {
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [floorPlanLoadState, setFloorPlanLoadState] = useState<'loading' | 'loaded' | 'failed'>('loading');
 
-  // Reset zoom and dynamically verify image size/status on filter/floor plan changes
+  // Reset zoom and dynamically verify image layout load status on filter/floor plan changes
   useEffect(() => {
     setFloorPlanLoadState('loading');
     setFloorPlanZoom(1.0);
@@ -105,38 +105,34 @@ export default function App() {
 
     let isMounted = true;
 
-    fetch(imageUrl)
-      .then(async (res) => {
-        if (!res.ok) {
-          throw new Error('Image not found on server or cannot be retrieved');
-        }
-        const blob = await res.blob();
-        // Since empty created files have 0 bytes, we intercept them and trigger the elegant fallback
-        if (blob.size < 100) {
-          throw new Error('Image is empty or uninitialized (0 bytes)');
-        }
-        
-        if (isMounted) {
-          // Pre-load layout image into memory to guarantee valid decoding
-          const img = new Image();
-          img.src = imageUrl;
-          img.onload = () => {
-            if (isMounted) setFloorPlanLoadState('loaded');
-          };
-          img.onerror = () => {
-            if (isMounted) setFloorPlanLoadState('failed');
-          };
-        }
-      })
-      .catch((err) => {
-        if (isMounted) {
-          console.warn("Floor plan file check triggered blueprint preview mode:", err.message);
+    // Use native Image object which handles browser caching, CORS, and behaves perfectly with zero latency.
+    const img = new Image();
+    img.src = imageUrl;
+    
+    img.onload = () => {
+      if (isMounted) {
+        // If the image successfully loaded, but is technically an invalid empty image (like a 0-byte file)
+        // the browser's naturalWidth and naturalHeight will be 0.
+        if (img.naturalWidth === 0 || img.naturalHeight === 0) {
+          console.warn(`Floor plan image ${fileBaseName} loaded but has empty dimensions (0x0). Transitioning to blueprint fallback.`);
           setFloorPlanLoadState('failed');
+        } else {
+          setFloorPlanLoadState('loaded');
         }
-      });
+      }
+    };
+
+    img.onerror = () => {
+      if (isMounted) {
+        console.warn(`Floor plan image ${fileBaseName} failed to load or is uninitialized (0 bytes). Transitioning to blueprint fallback.`);
+        setFloorPlanLoadState('failed');
+      }
+    };
 
     return () => {
       isMounted = false;
+      img.onload = null;
+      img.onerror = null;
     };
   }, [floorPlanVilla, withDimension, floorLevel, floorPlanEstateId]);
 
