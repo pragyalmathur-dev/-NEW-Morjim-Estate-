@@ -18,6 +18,7 @@ interface SidebarProps {
   setSelectedVilla: (villaId: string | null) => void;
   onOpenRenders: (phaseId: 'a' | 'b') => void;
   onCloseSidebar?: () => void;
+  onOpenFloorPlan?: (villaId: string, estateId: 'a' | 'b') => void;
 }
 
 export default function Sidebar({
@@ -35,6 +36,7 @@ export default function Sidebar({
   setSelectedVilla,
   onOpenRenders,
   onCloseSidebar,
+  onOpenFloorPlan,
 }: SidebarProps) {
   return (
     <aside
@@ -189,7 +191,12 @@ export default function Sidebar({
                           return (
                             <button
                               key={vKey}
-                              onClick={() => setSelectedVilla(vKey)}
+                              onClick={() => {
+                                setSelectedVilla(vKey);
+                                if (onOpenFloorPlan) {
+                                  onOpenFloorPlan(vKey, phase.id as 'a' | 'b');
+                                }
+                              }}
                               className={`h-10 rounded-none text-xs font-sans font-light tracking-widest transition-all duration-200 relative flex items-center justify-center cursor-pointer border ${
                                 isSelectedVilla
                                   ? 'bg-[#1c3c31] text-white border-[#1c3c31] shadow-sm font-medium'

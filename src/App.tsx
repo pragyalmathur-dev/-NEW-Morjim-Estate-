@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, Eye, EyeOff, Check, X, ShieldCheck, Mail, Phone, User, Landmark, Building2, HelpCircle, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
+import { Sparkles, Eye, EyeOff, Check, X, ShieldCheck, Mail, Phone, User, Landmark, Building2, HelpCircle, ChevronLeft, ChevronRight, Menu, Plus, Minus, RotateCcw } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import MapContainer from './components/MapContainer';
 import { OverlayConfig, ProjectPhase, MapTileStyle, OverlayMode } from './types';
+import { ESTATE_1_VILLAS, ESTATE_2_VILLAS } from './data/villas';
 import L from 'leaflet';
 
 // Sample coordinates representing Morjim, North Goa
@@ -80,6 +81,25 @@ export default function App() {
   const [rendersModalOpen, setRendersModalOpen] = useState(false);
   const [rendersActiveId, setRendersActiveId] = useState<'a' | 'b'>('a');
   const [rendersActiveImageIdx, setRendersActiveImageIdx] = useState(0);
+
+  // Floor Plans Modal States
+  const [floorPlanModalOpen, setFloorPlanModalOpen] = useState(false);
+  const [floorPlanVilla, setFloorPlanVilla] = useState<string>('2');
+  const [floorPlanEstateId, setFloorPlanEstateId] = useState<'a' | 'b'>('a');
+  const [withDimension, setWithDimension] = useState<boolean>(true);
+  const [floorLevel, setFloorLevel] = useState<'GF' | 'FF'>('GF');
+  const [floorPlanZoom, setFloorPlanZoom] = useState<number>(1.0);
+  const [floorPlanPan, setFloorPlanPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDraggingFloorPlan, setIsDraggingFloorPlan] = useState<boolean>(false);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [floorPlanLoadState, setFloorPlanLoadState] = useState<'loading' | 'loaded' | 'failed'>('loading');
+
+  // Reset zoom on filter/floor plan changes
+  useEffect(() => {
+    setFloorPlanLoadState('loading');
+    setFloorPlanZoom(1.0);
+    setFloorPlanPan({ x: 0, y: 0 });
+  }, [floorPlanVilla, withDimension, floorLevel, floorPlanEstateId]);
 
   // Reference for direct Leaflet map interactions
   const mapRef = useRef<L.Map | null>(null);
@@ -413,6 +433,11 @@ export default function App() {
             setRendersModalOpen(true);
           }}
           onCloseSidebar={() => setIsSidebarOpen(false)}
+          onOpenFloorPlan={(villaId, estateId) => {
+            setFloorPlanVilla(villaId);
+            setFloorPlanEstateId(estateId);
+            setFloorPlanModalOpen(true);
+          }}
         />
       </div>
 
@@ -657,6 +682,287 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* LUXURY FLOOR PLAN DIALOG BOX */}
+      {floorPlanModalOpen && (() => {
+        // Retrieve villa details
+        const activeVillaData = floorPlanEstateId === 'a' 
+          ? ESTATE_1_VILLAS[floorPlanVilla] 
+          : ESTATE_2_VILLAS[floorPlanVilla];
+        
+        const villaStatus = activeVillaData?.status || 'Available';
+        const bhkConfig = activeVillaData?.config || '4 BHK';
+        const totalArea = activeVillaData?.area || '4,500 sq.ft.';
+        
+        // Padded formatted villa name (e.g. '04' instead of '4')
+        const formattedVillaName = /^[0-9]+$/.test(floorPlanVilla) 
+          ? `VILLA ${floorPlanVilla.padStart(2, '0')}` 
+          : `VILLA ${floorPlanVilla}`;
+
+        // Construct dynamic file name and URL based on user's schema:
+        // ME1_2_GF_WD.jpg or ME1_3_FF_WOD.jpg
+        const fileBaseName = `ME${floorPlanEstateId === 'a' ? '1' : '2'}_${floorPlanVilla}_${floorLevel}_${withDimension ? 'WD' : 'WOD'}`;
+        const imageUrl = `/assets/floorplans/${fileBaseName}.jpg`;
+
+        return (
+          <div className="fixed inset-0 bg-[#0c0d0c]/70 backdrop-blur-md z-[3000] flex items-center justify-center p-4 animate-fadeIn font-sans">
+            <div className="w-full max-w-4xl bg-[#FAF8F5] border border-[#ebdcd0]/75 rounded-none shadow-2xl flex flex-col md:max-h-[85vh] overflow-hidden select-none font-sans font-light">
+              
+              {/* Header section matching exact Vianaar style */}
+              <div className="px-6 py-5 border-b border-[#ebdcd0]/45 flex justify-between items-center bg-[#FAF8F5] shrink-0">
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-3.5 flex-wrap">
+                    <h2 className="font-serif text-3xl font-normal text-[#1c3c31] leading-none tracking-wide select-none">
+                      {formattedVillaName}
+                    </h2>
+                  </div>
+                </div>
+
+                {/* Close Button Top Right */}
+                <button
+                  onClick={() => setFloorPlanModalOpen(false)}
+                  className="text-[#8c7a6b]/60 hover:text-[#1c3c31] hover:bg-stone-100 transition-all p-2 rounded-none cursor-pointer focus:outline-none"
+                  aria-label="Close modal"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* 2-Column Split Body */}
+              <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0 bg-white">
+                
+                {/* Left Side Pane: Selectors / Controls */}
+                <div className="w-full md:w-[240px] px-6 py-8 border-b md:border-b-0 md:border-r border-[#ebdcd0]/45 bg-[#FAF8F5] shrink-0 space-y-8 flex flex-col justify-start">
+                  
+                  {/* Dimensions Filter */}
+                  <div>
+                    <h3 className="text-[10px] tracking-[2.5px] font-sans font-medium uppercase text-[#8c8276] mb-3">
+                      Dimensions
+                    </h3>
+                    <div className="bg-[#efede9] rounded-full p-1 flex w-full select-none">
+                      <button
+                        onClick={() => setWithDimension(true)}
+                        className={`py-2 px-3 rounded-full text-xs font-sans tracking-wide transition-all duration-200 cursor-pointer w-1/2 text-center focus:outline-none ${
+                          withDimension
+                            ? 'bg-[#1c3c31] text-white shadow-md font-medium'
+                            : 'text-[#8c8276] hover:text-[#1c3c31]'
+                        }`}
+                      >
+                        With
+                      </button>
+                      <button
+                        onClick={() => setWithDimension(false)}
+                        className={`py-2 px-3 rounded-full text-xs font-sans tracking-wide transition-all duration-200 cursor-pointer w-1/2 text-center focus:outline-none ${
+                          !withDimension
+                            ? 'bg-[#1c3c31] text-white shadow-md font-medium'
+                            : 'text-[#8c8276] hover:text-[#1c3c31]'
+                        }`}
+                      >
+                        Without
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Floor Level Filter */}
+                  <div>
+                    <h3 className="text-[10px] tracking-[2.5px] font-sans font-medium uppercase text-[#8c8276] mb-3">
+                      Floor Level
+                    </h3>
+                    <div className="flex flex-col gap-2.5">
+                      <button
+                        onClick={() => setFloorLevel('GF')}
+                        className={`w-full py-3 px-5 border rounded-full flex justify-between items-center text-xs font-sans tracking-widest uppercase transition-all duration-200 focus:outline-none cursor-pointer ${
+                          floorLevel === 'GF'
+                            ? 'bg-[#1c3c31] border-[#1c3c31] text-white shadow-md font-medium'
+                            : 'bg-white border-[#ebdcd0]/75 hover:border-[#1c3c31]/40 text-[#1c3c31]/80 hover:text-[#1c3c31]'
+                        }`}
+                      >
+                        <span>Ground Floor</span>
+                        {floorLevel === 'GF' && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#ebdcd0]" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setFloorLevel('FF')}
+                        className={`w-full py-3 px-5 border rounded-full flex justify-between items-center text-xs font-sans tracking-widest uppercase transition-all duration-200 focus:outline-none cursor-pointer ${
+                          floorLevel === 'FF'
+                            ? 'bg-[#1c3c31] border-[#1c3c31] text-white shadow-md font-medium'
+                            : 'bg-white border-[#ebdcd0]/75 hover:border-[#1c3c31]/40 text-[#1c3c31]/80 hover:text-[#1c3c31]'
+                        }`}
+                      >
+                        <span>First Floor</span>
+                        {floorLevel === 'FF' && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#ebdcd0]" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Aesthetic Tip / Usage Note on Bottom of Sidebar */}
+                  <div className="pt-6 border-t border-[#ebdcd0]/35 mt-auto hidden md:block">
+                    <p className="text-[10px] text-[#8c8276] tracking-wide font-sans leading-relaxed font-light select-none">
+                      Drag plan image anywhere within viewport to pan and inspect fine measurements. Use buttons to zoom.
+                    </p>
+                  </div>
+
+                </div>
+
+                {/* Right Side Pane: Interactive Viewport */}
+                <div className="flex-1 bg-[#FAF8F5] p-4 md:p-6 flex flex-col min-h-[360px] md:min-h-0 relative">
+                  
+                  {/* Viewport Box */}
+                  <div
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setIsDraggingFloorPlan(true);
+                      setDragStart({ x: e.clientX - floorPlanPan.x, y: e.clientY - floorPlanPan.y });
+                    }}
+                    onMouseMove={(e) => {
+                      if (!isDraggingFloorPlan) return;
+                      setFloorPlanPan({
+                        x: e.clientX - dragStart.x,
+                        y: e.clientY - dragStart.y
+                      });
+                    }}
+                    onMouseUp={() => setIsDraggingFloorPlan(false)}
+                    onMouseLeave={() => setIsDraggingFloorPlan(false)}
+                    className="flex-1 border border-[#ebdcd0]/60 rounded-2xl bg-white relative overflow-hidden flex items-center justify-center select-none cursor-grab active:cursor-grabbing shadow-inner"
+                  >
+                    {/* Architectural Blueprint Placeholder or Real Loaded Image */}
+                    <div
+                      style={{
+                        transform: `translate(${floorPlanPan.x}px, ${floorPlanPan.y}px) scale(${floorPlanZoom})`,
+                        transition: isDraggingFloorPlan ? 'none' : 'transform 100ms ease-out'
+                      }}
+                      className="w-full h-full flex items-center justify-center"
+                    >
+                      {floorPlanLoadState === 'failed' ? (
+                        /* Premium mock-up blueprint if the asset file is not uploaded yet */
+                        <div className="p-8 w-full h-full flex flex-col justify-center items-center text-center bg-[#fdfcfa] select-none relative overflow-hidden">
+                          {/* Blueprint Grid Lines & Compass Graphics */}
+                          <div className="absolute inset-0 opacity-[0.035] pointer-events-none" style={{
+                            backgroundImage: 'radial-gradient(circle, #1c3c31 1.5px, transparent 1.5px)',
+                            backgroundSize: '24px 24px',
+                          }} />
+                          
+                          {/* Radial background representing drafting draft circles */}
+                          <div className="absolute w-[240px] h-[240px] border border-[#1c3c31]/5 rounded-full flex items-center justify-center opacity-85 pointer-events-none">
+                            <div className="w-[180px] h-[180px] border border-dashed border-[#1c3c31]/5 rounded-full" />
+                            <div className="w-[120px] h-[120px] border border-[#1c3c31]/5 rounded-full" />
+                          </div>
+
+                          {/* Decorative draft pointer angle */}
+                          <div className="absolute pointer-events-none w-full h-[1px] bg-gradient-to-r from-transparent via-[#1c3c31]/5 to-transparent rotate-12" />
+                          <div className="absolute pointer-events-none w-full h-[1px] bg-gradient-to-r from-transparent via-[#1c3c31]/5 to-transparent -rotate-45" />
+
+                          {/* Technical drawing identifier watermark on bottom right */}
+                          <div className="absolute bottom-5 right-5 text-right font-mono text-[9px] text-[#8c8276]/30 select-none hidden sm:block leading-relaxed uppercase">
+                            <div>Vianaar Drawing Registry</div>
+                            <div>Sheet Ref: ME{floorPlanEstateId === 'a' ? '1' : '2'} - FP - {floorPlanVilla}</div>
+                            <div>Scale: 1:120 Structural</div>
+                          </div>
+
+                          {/* Center Content */}
+                          <Building2 className="w-12 h-12 text-[#1c3c31]/10 mb-4 animate-pulse shrink-0" />
+                          <div className="text-[10px] tracking-[4px] uppercase text-[#ebdcd0] bg-[#1c3c31] px-3.5 py-1.5 mb-3 font-medium select-none shadow-sm">
+                            Blueprint Under Preparation
+                          </div>
+                          
+                          <h4 className="font-serif text-xl tracking-wide font-normal text-[#1c3c31] mb-2 px-4 max-w-sm">
+                            {bhkConfig} Floor Layout
+                          </h4>
+                          
+                          <p className="text-[#8c8276] text-[11px] leading-relaxed max-w-sm mb-4 font-light select-none font-sans px-4">
+                            The visual floor plan asset with detailed partitions and layout is currently loading or being synchronized for publication. Current target asset lookup:
+                          </p>
+
+                          <code className="text-stone-700 bg-stone-100 font-mono text-[10px] px-3.5 py-1.5 rounded border border-stone-200 max-w-md select-all">
+                            /assets/floorplans/{fileBaseName}.jpg
+                          </code>
+
+                          <p className="text-[9.5px] italic text-[#8c8276]/85 mt-3 select-none font-sans font-light">
+                            Tip: Once you upload a JPEG with this name to the folder, it shows up here.
+                          </p>
+                        </div>
+                      ) : (
+                        /* Normal image display */
+                        <img
+                          src={imageUrl}
+                          alt={`${formattedVillaName} ${floorLevel === 'GF' ? 'Ground' : 'First'} Floor`}
+                          className="max-w-[90%] max-h-[90%] object-contain pointer-events-none select-none transition-all duration-300"
+                          onLoad={() => setFloorPlanLoadState('loaded')}
+                          onError={() => setFloorPlanLoadState('failed')}
+                        />
+                      )}
+                    </div>
+
+                    {/* Loading Indicator Spinner Overlay */}
+                    {floorPlanLoadState === 'loading' && (
+                      <div className="absolute inset-0 bg-[#FAF8F5]/90 backdrop-blur-sm flex flex-col items-center justify-center z-10 select-none">
+                        <div className="w-10 h-10 border-2 border-[#1c3c31]/10 border-t-[#1c3c31] rounded-full animate-spin mb-3" />
+                        <span className="text-[10px] tracking-[2px] uppercase text-[#1c3c31]/80 font-light font-sans select-none">
+                          Loading Layout Asset...
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Floating Zoom Controls Bottom Right (Exactly matching Mockup!) */}
+                    <div className="absolute bottom-5 right-5 flex flex-col gap-1 shadow-xl z-20 select-none">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFloorPlanZoom(prev => Math.min(3.5, prev + 0.15));
+                        }}
+                        className="w-9 h-9 bg-neutral-900 border-none text-white hover:bg-neutral-800 flex items-center justify-center focus:outline-none transition-all rounded-t select-none cursor-pointer active:scale-95 text-base font-bold"
+                        title="Zoom In"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFloorPlanZoom(prev => Math.max(0.5, prev - 0.15));
+                        }}
+                        className="w-9 h-9 bg-neutral-900 border-none text-white hover:bg-neutral-800 flex items-center justify-center focus:outline-none transition-all select-none cursor-pointer active:scale-95 text-base font-bold"
+                        title="Zoom Out"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFloorPlanZoom(1.0);
+                          setFloorPlanPan({ x: 0, y: 0 });
+                        }}
+                        className="w-9 h-9 bg-neutral-900 border-none text-white hover:bg-neutral-800 flex items-center justify-center focus:outline-none transition-all rounded-b select-none cursor-pointer active:scale-95 text-xs font-light animate-none"
+                        title="Reset View"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5 text-[#ebdcd0]" />
+                      </button>
+                    </div>
+
+                    {/* Mockup Watermark Floor Details on Bottom-Right of the Image Box */}
+                    {floorPlanLoadState === 'loaded' && (
+                      <div className="absolute bottom-5 left-5 bg-white/80 border border-[#ebdcd0]/45 px-3.5 py-2 z-10 backdrop-blur-sm flex flex-col pointer-events-none select-none">
+                        <div className="text-[12px] font-sans font-light tracking-[2px] uppercase text-[#1c3c31] leading-none mb-0.5">
+                          {formattedVillaName}
+                        </div>
+                        <div className="text-[9px] font-sans font-light text-[#8c8276] uppercase tracking-[1px] leading-none">
+                          {floorLevel === 'GF' ? 'Ground Floor' : 'First Floor'} Plan
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );
