@@ -14,7 +14,7 @@ export interface EstateRender {
   url: string;
   title: string;
   sub?: string;
-  group?: 'J&H' | 'L&K';
+  group?: 'A-E' | 'J&H' | 'L&K';
   desc: string;
 }
 
@@ -35,6 +35,20 @@ const ESTATE_RENDERS: Record<'a' | 'b', EstateRender[]> = {
     }
   ],
   b: [
+    {
+      url: '/assets/renders/ME2_A-E_Front.png',
+      title: 'Morjim Estate 2 (Villa A - E)',
+      sub: 'Front Elevation',
+      group: 'A-E',
+      desc: 'Note: Visual renders are indicative and subject to modification to align with final design requirements.'
+    },
+    {
+      url: '/assets/renders/ME2_A-E_Side.png',
+      title: 'Morjim Estate 2 (Villa A - E)',
+      sub: 'Side Facade & Pool',
+      group: 'A-E',
+      desc: 'Note: Visual renders are indicative and subject to modification to align with final design requirements.'
+    },
     {
       url: '/assets/renders/ME2_J&H_Front.png',
       title: 'Morjim Estate 2 (Villa J & H)',
@@ -129,7 +143,7 @@ export default function App() {
   const [rendersActiveId, setRendersActiveId] = useState<'a' | 'b'>('b');
   const [rendersActiveImageIdx, setRendersActiveImageIdx] = useState(0);
   const [rendersLoading, setRendersLoading] = useState<boolean>(true);
-  const [rendersFilterGroup, setRendersFilterGroup] = useState<'all' | 'J&H' | 'L&K'>('all');
+  const [rendersFilterGroup, setRendersFilterGroup] = useState<'all' | 'A-E' | 'J&H' | 'L&K'>('all');
 
   // Floor Plans Modal States
   const [floorPlanModalOpen, setFloorPlanModalOpen] = useState(false);
@@ -555,6 +569,7 @@ export default function App() {
           setSelectedVilla={setSelectedVilla}
           onOpenRenders={(phaseId) => {
             setRendersActiveId(phaseId);
+            setRendersFilterGroup('all');
             setRendersActiveImageIdx(0);
             setRendersModalOpen(true);
           }}
@@ -786,7 +801,7 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* Estate 2 Specific Sub-Filters (Villa J&H vs Villa L&K) */}
+                  {/* Estate 2 Specific Sub-Filters (Villa A-E, Villa J&H, Villa L&K) */}
                   {rendersActiveId === 'b' && (
                     <div className="flex items-center gap-1.5 bg-[#0c1e18]/60 p-1 border border-[#ebdcd0]/15">
                       <button
@@ -800,7 +815,20 @@ export default function App() {
                             : 'text-[#ebdcd0]/60 hover:text-white'
                         }`}
                       >
-                        All (9)
+                        All ({allEstateRenders.length})
+                      </button>
+                      <button
+                        onClick={() => {
+                          setRendersFilterGroup('A-E');
+                          setRendersActiveImageIdx(0);
+                        }}
+                        className={`px-2.5 py-0.5 text-[9.5px] uppercase tracking-wider transition-all cursor-pointer ${
+                          rendersFilterGroup === 'A-E'
+                            ? 'bg-[#1c3c31] text-[#ebdcd0] border border-[#ebdcd0]/40 font-medium'
+                            : 'text-[#ebdcd0]/60 hover:text-white'
+                        }`}
+                      >
+                        Villa A - E ({allEstateRenders.filter(r => r.group === 'A-E').length})
                       </button>
                       <button
                         onClick={() => {
@@ -813,7 +841,7 @@ export default function App() {
                             : 'text-[#ebdcd0]/60 hover:text-white'
                         }`}
                       >
-                        Villa J & H (5)
+                        Villa J & H ({allEstateRenders.filter(r => r.group === 'J&H').length})
                       </button>
                       <button
                         onClick={() => {
@@ -826,7 +854,7 @@ export default function App() {
                             : 'text-[#ebdcd0]/60 hover:text-white'
                         }`}
                       >
-                        Villa L & K (4)
+                        Villa L & K ({allEstateRenders.filter(r => r.group === 'L&K').length})
                       </button>
                     </div>
                   )}
