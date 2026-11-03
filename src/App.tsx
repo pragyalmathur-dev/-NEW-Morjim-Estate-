@@ -10,45 +10,92 @@ import L from 'leaflet';
 const PROJECT_A_COORDS = { lat: 15.64249708103591, lng: 73.74422550201417 };
 const PROJECT_B_COORDS = { lat: 15.642776362003868, lng: 73.74419404434208 };
 
+export interface EstateRender {
+  url: string;
+  title: string;
+  sub?: string;
+  group?: 'J&H' | 'L&K';
+  desc: string;
+}
+
 // Premium Architectural Renders configuration for Vianaar Morjim Estates I & II
-const ESTATE_RENDERS: Record<'a' | 'b', Array<{ url: string; title: string; sub?: string; desc: string }>> = {
+const ESTATE_RENDERS: Record<'a' | 'b', EstateRender[]> = {
   a: [
     {
       url: '/assets/renders/ME1_Front.jpg',
       title: 'Morjim Estate 1',
-      sub: 'Front View',
+      sub: 'Front Elevation',
       desc: 'Note: Visual renders are indicative and subject to modification to align with final design requirements.'
     },
     {
       url: '/assets/renders/ME1_Back.jpg',
       title: 'Morjim Estate 1',
-      sub: 'Back View',
+      sub: 'Rear Elevation & Landscape',
       desc: 'Note: Visual renders are indicative and subject to modification to align with final design requirements.'
     }
   ],
   b: [
     {
-      url: '/assets/renders/ME2_D_Front.jpg',
-      title: 'Morjim Estate 2 (Villa D)',
-      sub: 'Front View',
+      url: '/assets/renders/ME2_J&H_Front.png',
+      title: 'Morjim Estate 2 (Villa J & H)',
+      sub: 'Front Elevation',
+      group: 'J&H',
       desc: 'Note: Visual renders are indicative and subject to modification to align with final design requirements.'
     },
     {
-      url: '/assets/renders/ME2_D_Back.jpg',
-      title: 'Morjim Estate 2 (Villa D)',
-      sub: 'Back View',
+      url: '/assets/renders/ME2_J&H_Back.png',
+      title: 'Morjim Estate 2 (Villa J & H)',
+      sub: 'Rear Elevation & Pool',
+      group: 'J&H',
       desc: 'Note: Visual renders are indicative and subject to modification to align with final design requirements.'
     },
     {
-      url: '/assets/renders/ME2_E_Front.jpg',
-      title: 'Morjim Estate 2 (Villa E)',
-      sub: 'Front View',
+      url: '/assets/renders/ME2_J&H_Side.png',
+      title: 'Morjim Estate 2 (Villa J & H)',
+      sub: 'Side Facade & Walkway',
+      group: 'J&H',
       desc: 'Note: Visual renders are indicative and subject to modification to align with final design requirements.'
     },
     {
-      url: '/assets/renders/ME2_E_Back.jpg',
-      title: 'Morjim Estate 2 (Villa E)',
-      sub: 'Back View',
+      url: '/assets/renders/ME2_J&H_Garden.png',
+      title: 'Morjim Estate 2 (Villa J & H)',
+      sub: 'Private Garden Sanctuary',
+      group: 'J&H',
+      desc: 'Note: Visual renders are indicative and subject to modification to align with final design requirements.'
+    },
+    {
+      url: '/assets/renders/ME2_J&H_Balcony.png',
+      title: 'Morjim Estate 2 (Villa J & H)',
+      sub: 'First Floor Balcony',
+      group: 'J&H',
+      desc: 'Note: Visual renders are indicative and subject to modification to align with final design requirements.'
+    },
+    {
+      url: '/assets/renders/ME2_L&K_Front.png',
+      title: 'Morjim Estate 2 (Villa L & K)',
+      sub: 'Front Elevation',
+      group: 'L&K',
+      desc: 'Note: Visual renders are indicative and subject to modification to align with final design requirements.'
+    },
+    {
+      url: '/assets/renders/ME2_L&K_Back.png',
+      title: 'Morjim Estate 2 (Villa L & K)',
+      sub: 'Rear Deck & Private Pool',
+      group: 'L&K',
+      desc: 'Note: Visual renders are indicative and subject to modification to align with final design requirements.'
+    },
+    {
+      url: '/assets/renders/ME2_L&K_Side.png',
+      title: 'Morjim Estate 2 (Villa L & K)',
+      sub: 'Side Facade & Landscape',
+      group: 'L&K',
+      desc: 'Note: Visual renders are indicative and subject to modification to align with final design requirements.'
+    },
+    {
+      url: '/assets/renders/ME2_L&K_Garden.png',
+      title: 'Morjim Estate 2 (Villa L & K)',
+      sub: 'Lush Tropical Garden Court',
+      group: 'L&K',
       desc: 'Note: Visual renders are indicative and subject to modification to align with final design requirements.'
     }
   ]
@@ -79,9 +126,10 @@ export default function App() {
 
   // Renders Gallery Modal States
   const [rendersModalOpen, setRendersModalOpen] = useState(false);
-  const [rendersActiveId, setRendersActiveId] = useState<'a' | 'b'>('a');
+  const [rendersActiveId, setRendersActiveId] = useState<'a' | 'b'>('b');
   const [rendersActiveImageIdx, setRendersActiveImageIdx] = useState(0);
   const [rendersLoading, setRendersLoading] = useState<boolean>(true);
+  const [rendersFilterGroup, setRendersFilterGroup] = useState<'all' | 'J&H' | 'L&K'>('all');
 
   // Floor Plans Modal States
   const [floorPlanModalOpen, setFloorPlanModalOpen] = useState(false);
@@ -101,7 +149,9 @@ export default function App() {
     setFloorPlanZoom(1.0);
     setFloorPlanPan({ x: 0, y: 0 });
 
-    const fileBaseName = `ME${floorPlanEstateId === 'a' ? '1' : '2'}_${floorPlanVilla}_${floorLevel}_${withDimension ? 'WD' : 'WOD'}`;
+    const validVillaKeys = floorPlanEstateId === 'a' ? Object.keys(ESTATE_1_VILLAS) : Object.keys(ESTATE_2_VILLAS);
+    const safeVilla = validVillaKeys.includes(floorPlanVilla) ? floorPlanVilla : validVillaKeys[0];
+    const fileBaseName = `ME${floorPlanEstateId === 'a' ? '1' : '2'}_${safeVilla}_${floorLevel}_${withDimension ? 'WD' : 'WOD'}`;
     const imageUrl = `/assets/floorplans/${fileBaseName}.jpg`;
 
     let isMounted = true;
@@ -149,7 +199,33 @@ export default function App() {
   // Monitor active architectural render selections and display smooth loaders
   useEffect(() => {
     setRendersLoading(true);
-  }, [rendersActiveId, rendersActiveImageIdx, rendersModalOpen]);
+  }, [rendersActiveId, rendersActiveImageIdx, rendersFilterGroup, rendersModalOpen]);
+
+  // Keyboard navigation for renders modal
+  useEffect(() => {
+    if (!rendersModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setRendersModalOpen(false);
+      } else if (e.key === 'ArrowLeft') {
+        const displayed = ESTATE_RENDERS[rendersActiveId].filter(
+          item => rendersActiveId === 'a' || rendersFilterGroup === 'all' || item.group === rendersFilterGroup
+        );
+        if (displayed.length > 0) {
+          setRendersActiveImageIdx((prev) => (prev <= 0 ? displayed.length - 1 : prev - 1));
+        }
+      } else if (e.key === 'ArrowRight') {
+        const displayed = ESTATE_RENDERS[rendersActiveId].filter(
+          item => rendersActiveId === 'a' || rendersFilterGroup === 'all' || item.group === rendersFilterGroup
+        );
+        if (displayed.length > 0) {
+          setRendersActiveImageIdx((prev) => (prev >= displayed.length - 1 ? 0 : prev + 1));
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [rendersModalOpen, rendersActiveId, rendersFilterGroup]);
 
   // Reference for direct Leaflet map interactions
   const mapRef = useRef<L.Map | null>(null);
@@ -653,119 +729,272 @@ export default function App() {
       )}
 
       {/* LUXURY RENDERS GALLERY DIALOG BOX */}
-      {rendersModalOpen && (
-        <div className="fixed inset-0 bg-[#0c0d0c]/90 backdrop-blur-md z-[3000] flex flex-col items-center justify-center p-4 animate-fadeIn">
-          <div className="relative max-w-4xl w-full bg-[#1c3c31] border border-[#ebdcd0]/40 rounded-none shadow-2xl overflow-hidden flex flex-col select-none font-sans font-light">
-            
-            {/* Close Button Top Right */}
-            <button
-              onClick={() => setRendersModalOpen(false)}
-              className="absolute top-4 right-4 z-50 text-white/80 hover:text-white bg-black/40 hover:bg-black/65 p-2 rounded-none transition-all cursor-pointer"
+      {rendersModalOpen && (() => {
+        // Filter renders for the active estate and optional villa group filter
+        const allEstateRenders = ESTATE_RENDERS[rendersActiveId] || [];
+        const filteredRenders = allEstateRenders.filter(
+          item => rendersActiveId === 'a' || rendersFilterGroup === 'all' || item.group === rendersFilterGroup
+        );
+        const safeIdx = Math.min(Math.max(0, rendersActiveImageIdx), Math.max(0, filteredRenders.length - 1));
+        const currentRender = filteredRenders[safeIdx] || allEstateRenders[0];
+
+        return (
+          <div 
+            className="fixed inset-0 bg-[#0c0d0c]/90 backdrop-blur-md z-[3000] flex flex-col items-center justify-center p-3 sm:p-5 animate-fadeIn"
+            onClick={() => setRendersModalOpen(false)}
+          >
+            <div 
+              className="relative max-w-5xl w-full bg-[#1c3c31] border border-[#ebdcd0]/40 rounded-none shadow-2xl overflow-hidden flex flex-col select-none font-sans font-light max-h-[94vh]"
+              onClick={(e) => e.stopPropagation()}
             >
-              <X className="w-5 h-5" />
-            </button>
-
-            {/* Slider container with arrows */}
-            <div className="relative aspect-video w-full bg-stone-950 flex items-center justify-center overflow-hidden">
-              {/* Left Arrow */}
-              <button
-                onClick={() => {
-                  const arr = ESTATE_RENDERS[rendersActiveId];
-                  setRendersActiveImageIdx((prev) => (prev === 0 ? arr.length - 1 : prev - 1));
-                }}
-                className="absolute left-4 z-40 text-white hover:text-[#1c3c31] bg-black/40 hover:bg-[#ebdcd0] p-3 rounded-none transition-all duration-200 cursor-pointer"
-              >
-                <ChevronLeft className="w-6 h-6" />
-              </button>
-
-              {/* Main Image */}
-              <img
-                src={ESTATE_RENDERS[rendersActiveId][rendersActiveImageIdx].url}
-                alt={ESTATE_RENDERS[rendersActiveId][rendersActiveImageIdx].title}
-                className={`w-full h-full object-contain select-none transition-all duration-500 ${
-                  rendersLoading ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
-                }`}
-                onLoad={() => setRendersLoading(false)}
-                onError={() => setRendersLoading(false)}
-                referrerPolicy="no-referrer"
-              />
-
-              {/* Elegant Loading Spin Overlay */}
-              {rendersLoading && (
-                <div className="absolute inset-0 bg-stone-950/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-30 transition-all duration-300">
-                  <div className="w-9 h-9 border-2 border-[#ebdcd0]/20 border-t-[#ebdcd0] rounded-full animate-spin"></div>
-                  <span className="text-[10px] tracking-[4px] text-[#ebdcd0]/80 uppercase font-light font-sans select-none animate-pulse">
-                    Loading Architectural Render...
-                  </span>
-                </div>
-              )}
-
-              {/* Right Arrow */}
-              <button
-                onClick={() => {
-                  const arr = ESTATE_RENDERS[rendersActiveId];
-                  setRendersActiveImageIdx((prev) => (prev === arr.length - 1 ? 0 : prev + 1));
-                }}
-                className="absolute right-4 z-40 text-white hover:text-[#1c3c31] bg-black/40 hover:bg-[#ebdcd0] p-3 rounded-none transition-all duration-200 cursor-pointer"
-              >
-                <ChevronRight className="w-6 h-6" />
-              </button>
-            </div>
-
-            {/* Premium Header/Caption area - Straight 90 degree edges matching Vianaar style */}
-            <div className="p-6 bg-[#1c3c31] border-t border-[#ebdcd0]/20 text-white text-center">
-              <span className="text-[10px] tracking-[4px] text-[#ebdcd0] uppercase font-light">
-                {rendersActiveId === 'a' ? 'Morjim Estate I Renders' : 'Morjim Estate II Renders'}
-              </span>
-              <h4 className="font-serif text-lg tracking-wide font-normal text-white mt-1.5 mb-0.5 select-none">
-                {ESTATE_RENDERS[rendersActiveId][rendersActiveImageIdx].title}
-              </h4>
-              {ESTATE_RENDERS[rendersActiveId][rendersActiveImageIdx].sub && (
-                <div className="text-[11px] tracking-[2px] text-[#ebdcd0]/90 uppercase font-light mb-2 select-none">
-                  {ESTATE_RENDERS[rendersActiveId][rendersActiveImageIdx].sub}
-                </div>
-              )}
-              <p className="text-[#ebdcd0]/75 text-[11px] font-light max-w-xl mx-auto leading-relaxed select-none">
-                {ESTATE_RENDERS[rendersActiveId][rendersActiveImageIdx].desc}
-              </p>
               
-              {/* Bullets indicator */}
-              <div className="flex items-center justify-center gap-2 mt-4">
-                {ESTATE_RENDERS[rendersActiveId].map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setRendersActiveImageIdx(idx)}
-                    className={`h-1 transition-all duration-300 ${
-                      rendersActiveImageIdx === idx ? 'w-8 bg-[#ebdcd0]' : 'w-2 bg-white/30'
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
+              {/* Top Modal Header with Estate Tabs, Filters and Close */}
+              <div className="px-4 py-3 sm:px-6 sm:py-3.5 bg-[#142c24] border-b border-[#ebdcd0]/20 flex flex-wrap items-center justify-between gap-3 shrink-0">
+                
+                {/* Left: Estate Switcher & Filter Pills */}
+                <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+                  
+                  {/* Estate 1 vs Estate 2 Toggle */}
+                  <div className="flex bg-[#0c1e18] p-1 border border-[#ebdcd0]/25 rounded-none">
+                    <button
+                      onClick={() => {
+                        setRendersActiveId('a');
+                        setRendersFilterGroup('all');
+                        setRendersActiveImageIdx(0);
+                      }}
+                      className={`px-3 py-1 text-[10.5px] uppercase tracking-widest font-sans transition-all cursor-pointer ${
+                        rendersActiveId === 'a'
+                          ? 'bg-[#ebdcd0] text-[#1c3c31] font-medium shadow-sm'
+                          : 'text-[#ebdcd0]/70 hover:text-white'
+                      }`}
+                    >
+                      Estate 1 ({ESTATE_RENDERS.a.length})
+                    </button>
+                    <button
+                      onClick={() => {
+                        setRendersActiveId('b');
+                        setRendersFilterGroup('all');
+                        setRendersActiveImageIdx(0);
+                      }}
+                      className={`px-3 py-1 text-[10.5px] uppercase tracking-widest font-sans transition-all cursor-pointer ${
+                        rendersActiveId === 'b'
+                          ? 'bg-[#ebdcd0] text-[#1c3c31] font-medium shadow-sm'
+                          : 'text-[#ebdcd0]/70 hover:text-white'
+                      }`}
+                    >
+                      Estate 2 ({ESTATE_RENDERS.b.length})
+                    </button>
+                  </div>
 
+                  {/* Estate 2 Specific Sub-Filters (Villa J&H vs Villa L&K) */}
+                  {rendersActiveId === 'b' && (
+                    <div className="flex items-center gap-1.5 bg-[#0c1e18]/60 p-1 border border-[#ebdcd0]/15">
+                      <button
+                        onClick={() => {
+                          setRendersFilterGroup('all');
+                          setRendersActiveImageIdx(0);
+                        }}
+                        className={`px-2.5 py-0.5 text-[9.5px] uppercase tracking-wider transition-all cursor-pointer ${
+                          rendersFilterGroup === 'all'
+                            ? 'bg-[#1c3c31] text-[#ebdcd0] border border-[#ebdcd0]/40 font-medium'
+                            : 'text-[#ebdcd0]/60 hover:text-white'
+                        }`}
+                      >
+                        All (9)
+                      </button>
+                      <button
+                        onClick={() => {
+                          setRendersFilterGroup('J&H');
+                          setRendersActiveImageIdx(0);
+                        }}
+                        className={`px-2.5 py-0.5 text-[9.5px] uppercase tracking-wider transition-all cursor-pointer ${
+                          rendersFilterGroup === 'J&H'
+                            ? 'bg-[#1c3c31] text-[#ebdcd0] border border-[#ebdcd0]/40 font-medium'
+                            : 'text-[#ebdcd0]/60 hover:text-white'
+                        }`}
+                      >
+                        Villa J & H (5)
+                      </button>
+                      <button
+                        onClick={() => {
+                          setRendersFilterGroup('L&K');
+                          setRendersActiveImageIdx(0);
+                        }}
+                        className={`px-2.5 py-0.5 text-[9.5px] uppercase tracking-wider transition-all cursor-pointer ${
+                          rendersFilterGroup === 'L&K'
+                            ? 'bg-[#1c3c31] text-[#ebdcd0] border border-[#ebdcd0]/40 font-medium'
+                            : 'text-[#ebdcd0]/60 hover:text-white'
+                        }`}
+                      >
+                        Villa L & K (4)
+                      </button>
+                    </div>
+                  )}
+
+                </div>
+
+                {/* Right: Counter & Close Button */}
+                <div className="flex items-center gap-3 ml-auto">
+                  <span className="text-[10px] tracking-[2.5px] uppercase text-[#ebdcd0]/80 font-mono hidden sm:inline-block">
+                    {safeIdx + 1} / {filteredRenders.length}
+                  </span>
+
+                  <button
+                    onClick={() => setRendersModalOpen(false)}
+                    className="text-white/80 hover:text-white bg-black/30 hover:bg-black/60 p-1.5 transition-all cursor-pointer focus:outline-none"
+                    aria-label="Close renders modal"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+              </div>
+
+              {/* Slider Main Viewport container with arrows */}
+              <div className="relative w-full aspect-[16/10] max-h-[56vh] bg-stone-950 flex items-center justify-center overflow-hidden">
+                {/* Left Arrow */}
+                {filteredRenders.length > 1 && (
+                  <button
+                    onClick={() => {
+                      setRendersActiveImageIdx((prev) => (prev <= 0 ? filteredRenders.length - 1 : prev - 1));
+                    }}
+                    className="absolute left-3 sm:left-5 z-40 text-white hover:text-[#1c3c31] bg-black/50 hover:bg-[#ebdcd0] p-2.5 sm:p-3 transition-all duration-200 cursor-pointer shadow-lg focus:outline-none"
+                    aria-label="Previous render"
+                  >
+                    <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </button>
+                )}
+
+                {/* Main Render Image */}
+                {currentRender && (
+                  <img
+                    key={currentRender.url}
+                    src={currentRender.url}
+                    alt={currentRender.title}
+                    className={`w-full h-full object-contain select-none transition-all duration-300 ${
+                      rendersLoading ? 'opacity-0 scale-98' : 'opacity-100 scale-100'
+                    }`}
+                    onLoad={() => setRendersLoading(false)}
+                    onError={() => setRendersLoading(false)}
+                    referrerPolicy="no-referrer"
+                  />
+                )}
+
+                {/* Elegant Loading Spin Overlay */}
+                {rendersLoading && (
+                  <div className="absolute inset-0 bg-stone-950/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-30 transition-all duration-300">
+                    <div className="w-9 h-9 border-2 border-[#ebdcd0]/20 border-t-[#ebdcd0] rounded-full animate-spin"></div>
+                    <span className="text-[10px] tracking-[4px] text-[#ebdcd0]/80 uppercase font-light font-sans select-none animate-pulse">
+                      Loading High-Res Render...
+                    </span>
+                  </div>
+                )}
+
+                {/* Right Arrow */}
+                {filteredRenders.length > 1 && (
+                  <button
+                    onClick={() => {
+                      setRendersActiveImageIdx((prev) => (prev >= filteredRenders.length - 1 ? 0 : prev + 1));
+                    }}
+                    className="absolute right-3 sm:right-5 z-40 text-white hover:text-[#1c3c31] bg-black/50 hover:bg-[#ebdcd0] p-2.5 sm:p-3 transition-all duration-200 cursor-pointer shadow-lg focus:outline-none"
+                    aria-label="Next render"
+                  >
+                    <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </button>
+                )}
+
+                {/* Subtle Image Counter Badge on Top-Left of Viewport */}
+                <div className="absolute top-3 left-3 z-30 bg-black/60 backdrop-blur-sm px-2.5 py-1 text-[9.5px] tracking-widest text-[#ebdcd0] uppercase font-mono">
+                  {safeIdx + 1} of {filteredRenders.length}
+                </div>
+              </div>
+
+              {/* Caption & Title Bar */}
+              <div className="px-5 py-3 sm:py-3.5 bg-[#173229] border-t border-[#ebdcd0]/20 text-white text-center shrink-0">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <span className="text-[9.5px] tracking-[3px] text-[#ebdcd0] uppercase font-light">
+                    {rendersActiveId === 'a' ? 'Morjim Estate I' : 'Morjim Estate II'}
+                  </span>
+                  {currentRender?.sub && (
+                    <>
+                      <span className="text-[#ebdcd0]/40 text-xs">•</span>
+                      <span className="text-[10.5px] tracking-[2px] text-[#ebdcd0]/90 uppercase font-light">
+                        {currentRender.sub}
+                      </span>
+                    </>
+                  )}
+                </div>
+                
+                <h4 className="font-serif text-lg sm:text-xl tracking-wide font-normal text-white select-none">
+                  {currentRender?.title}
+                </h4>
+
+                <p className="text-[#ebdcd0]/65 text-[10px] font-light max-w-2xl mx-auto leading-relaxed select-none mt-1">
+                  {currentRender?.desc}
+                </p>
+              </div>
+
+              {/* Horizontal Thumbnail Gallery Strip */}
+              <div className="p-2.5 sm:p-3 bg-[#11241d] border-t border-[#ebdcd0]/15 shrink-0 overflow-x-auto scrollbar-thin">
+                <div className="flex items-center justify-center sm:justify-start gap-2 min-w-max mx-auto px-2">
+                  {filteredRenders.map((render, idx) => {
+                    const isSelected = safeIdx === idx;
+                    return (
+                      <button
+                        key={render.url}
+                        onClick={() => setRendersActiveImageIdx(idx)}
+                        className={`group relative flex flex-col items-center cursor-pointer transition-all duration-200 focus:outline-none ${
+                          isSelected ? 'scale-105' : 'opacity-65 hover:opacity-100 hover:scale-100'
+                        }`}
+                      >
+                        <div className={`w-16 h-11 sm:w-20 sm:h-13 bg-stone-900 overflow-hidden border transition-all ${
+                          isSelected 
+                            ? 'border-2 border-[#ebdcd0] shadow-[0_0_8px_rgba(235,220,208,0.5)]' 
+                            : 'border-white/20 hover:border-white/50'
+                        }`}>
+                          <img
+                            src={render.url}
+                            alt={render.title}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
+                        <span className={`text-[8.5px] tracking-wider uppercase truncate max-w-[80px] mt-1 text-center ${
+                          isSelected ? 'text-[#ebdcd0] font-medium' : 'text-white/60 group-hover:text-white'
+                        }`}>
+                          {render.sub?.replace(' Elevation', '').replace(' View', '') || `View ${idx + 1}`}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* LUXURY FLOOR PLAN DIALOG BOX */}
       {floorPlanModalOpen && (() => {
-        // Retrieve villa details
-        const activeVillaData = floorPlanEstateId === 'a' 
-          ? ESTATE_1_VILLAS[floorPlanVilla] 
-          : ESTATE_2_VILLAS[floorPlanVilla];
+        // Retrieve villa details safely for active estate
+        const activeVillasMap = floorPlanEstateId === 'a' ? ESTATE_1_VILLAS : ESTATE_2_VILLAS;
+        const validVillaKeys = Object.keys(activeVillasMap);
+        const safeVillaKey = validVillaKeys.includes(floorPlanVilla) ? floorPlanVilla : validVillaKeys[0];
+        const activeVillaData = activeVillasMap[safeVillaKey];
         
         const villaStatus = activeVillaData?.status || 'Available';
-        const bhkConfig = activeVillaData?.config || '4 BHK';
-        const totalArea = activeVillaData?.area || '4,500 sq.ft.';
+        const bhkConfig = activeVillaData?.config || '5 BHK';
+        const totalArea = activeVillaData?.area || '5,800 sq.ft.';
         
         // Padded formatted villa name (e.g. '04' instead of '4')
-        const formattedVillaName = /^[0-9]+$/.test(floorPlanVilla) 
-          ? `VILLA ${floorPlanVilla.padStart(2, '0')}` 
-          : `VILLA ${floorPlanVilla}`;
+        const formattedVillaName = /^[0-9]+$/.test(safeVillaKey) 
+          ? `VILLA ${safeVillaKey.padStart(2, '0')}` 
+          : `VILLA ${safeVillaKey}`;
 
         // Construct dynamic file name and URL based on user's schema:
-        // ME1_2_GF_WD.jpg or ME1_3_FF_WOD.jpg
-        const fileBaseName = `ME${floorPlanEstateId === 'a' ? '1' : '2'}_${floorPlanVilla}_${floorLevel}_${withDimension ? 'WD' : 'WOD'}`;
+        // ME1_2_GF_WD.jpg or ME2_A_GF_WD.jpg or ME2_F&G_FF_WOD.jpg
+        const fileBaseName = `ME${floorPlanEstateId === 'a' ? '1' : '2'}_${safeVillaKey}_${floorLevel}_${withDimension ? 'WD' : 'WOD'}`;
         const imageUrl = `/assets/floorplans/${fileBaseName}.jpg`;
 
         return (
@@ -773,12 +1002,33 @@ export default function App() {
             <div className="w-full max-w-4xl bg-[#FAF8F5] border border-[#ebdcd0]/75 rounded-none shadow-2xl flex flex-col md:max-h-[85vh] overflow-hidden select-none font-sans font-light">
               
               {/* Header section matching exact Vianaar style */}
-              <div className="px-6 py-5 border-b border-[#ebdcd0]/45 flex justify-between items-center bg-[#FAF8F5] shrink-0">
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-3.5 flex-wrap">
-                    <h2 className="font-serif text-3xl font-normal text-[#1c3c31] leading-none tracking-wide select-none">
+              <div className="px-6 py-4 sm:py-5 border-b border-[#ebdcd0]/45 flex justify-between items-center bg-[#FAF8F5] shrink-0">
+                <div className="flex items-center gap-3 sm:gap-6 flex-wrap">
+                  <div className="flex flex-col">
+                    <span className="text-[9px] tracking-[2.5px] uppercase font-light text-[#8c8276]">
+                      {floorPlanEstateId === 'a' ? 'Morjim Estate 1' : 'Morjim Estate 2'}
+                    </span>
+                    <h2 className="font-serif text-2xl sm:text-3xl font-normal text-[#1c3c31] leading-none tracking-wide select-none mt-0.5">
                       {formattedVillaName}
                     </h2>
+                  </div>
+
+                  {/* Quick Villa Selector inside Floor Plan Modal */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-[10px] tracking-wider text-[#8c8276] uppercase font-sans hidden sm:inline">
+                      Switch Villa:
+                    </label>
+                    <select
+                      value={safeVillaKey}
+                      onChange={(e) => setFloorPlanVilla(e.target.value)}
+                      className="bg-white border border-[#ebdcd0] text-[#1c3c31] px-2.5 py-1 text-xs rounded-none font-sans font-medium cursor-pointer focus:outline-none shadow-2xs"
+                    >
+                      {validVillaKeys.map((vKey) => (
+                        <option key={vKey} value={vKey}>
+                          {/^[0-9]+$/.test(vKey) ? `Villa ${vKey.padStart(2, '0')}` : `Villa ${vKey}`}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 

@@ -187,6 +187,16 @@ export default function Sidebar({
                       <div className="grid grid-cols-5 gap-1.5">
                         {villaKeys.map((vKey) => {
                           const isSelectedVilla = selectedVilla === vKey;
+                          const isRedHighlighted = phase.id === 'b' && vKey === 'F&G';
+
+                          let buttonStyle = 'bg-white text-[#1c3c31] border-[#ebdcd0]/45 hover:bg-[#1c3c31]/5 hover:border-[#1c3c31]/30';
+                          if (isRedHighlighted) {
+                            buttonStyle = isSelectedVilla
+                              ? 'bg-[#b91c1c] text-white border-[#b91c1c] shadow-sm font-medium'
+                              : 'bg-[#fee2e2] text-[#991b1b] border-[#f87171] hover:bg-[#fecaca] hover:border-[#dc2626] font-medium shadow-2xs';
+                          } else if (isSelectedVilla) {
+                            buttonStyle = 'bg-[#1c3c31] text-white border-[#1c3c31] shadow-sm font-medium';
+                          }
                           
                           return (
                             <button
@@ -197,11 +207,7 @@ export default function Sidebar({
                                   onOpenFloorPlan(vKey, phase.id as 'a' | 'b');
                                 }
                               }}
-                              className={`h-10 rounded-none text-xs font-sans font-light tracking-widest transition-all duration-200 relative flex items-center justify-center cursor-pointer border ${
-                                isSelectedVilla
-                                  ? 'bg-[#1c3c31] text-white border-[#1c3c31] shadow-sm font-medium'
-                                  : 'bg-white text-[#1c3c31] border-[#ebdcd0]/45 hover:bg-[#1c3c31]/5 hover:border-[#1c3c31]/30'
-                              }`}
+                              className={`h-10 rounded-none text-xs font-sans font-light tracking-wider transition-all duration-200 relative flex items-center justify-center cursor-pointer border ${buttonStyle}`}
                             >
                                {vKey}
                             </button>
